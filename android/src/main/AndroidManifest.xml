@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.MythiCode.camerakit">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+
+
+
+    <meta-data
+        android:name="com.google.firebase.ml.vision.DEPENDENCIES"
+        android:value="barcode" />
+</manifest>

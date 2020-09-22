@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "484831997179",
+    "firebase_url": "https://test-c19f6.firebaseio.com",
+    "project_id": "test-c19f6",
+    "storage_bucket": "test-c19f6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:484831997179:android:4d40e93601ca0982a2d45e",
+        "android_client_info": {
+          "package_name": "com.MythiCode.camerakit_example"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "484831997179-ubuu9jbcbv67gfu7pllb5bu0d5ofml89.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSA-5_kQ-w35Rr2rdKWaNdGya01BP-gmM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484831997179-ubuu9jbcbv67gfu7pllb5bu0d5ofml89.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:484831997179:android:f4a9275f70e6a7e6a2d45e",
+        "android_client_info": {
+          "package_name": "com.MythiCode.mrzscannertest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "484831997179-ubuu9jbcbv67gfu7pllb5bu0d5ofml89.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSA-5_kQ-w35Rr2rdKWaNdGya01BP-gmM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "484831997179-ubuu9jbcbv67gfu7pllb5bu0d5ofml89.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
