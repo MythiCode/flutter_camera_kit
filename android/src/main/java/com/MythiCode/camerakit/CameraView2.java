@@ -25,6 +25,7 @@ import android.media.ImageReader;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -67,6 +68,7 @@ import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableListener {
 
+    private static final int MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT = 100;
     private final FirebaseVisionBarcodeDetector detector;
     private final FirebaseVisionBarcodeDetectorOptions options;
     private int mState = STATE_PREVIEW;
@@ -137,7 +139,34 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         ORIENTATIONS.append(Surface.ROTATION_270, 270);
     }
 
-    private CameraCaptureSession.CaptureCallback mCaptureCallback
+
+    private CameraCaptureSession.CaptureCallback captureCallbackBarcodeReader
+            = new CameraCaptureSession.CaptureCallback() {
+
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result) {
+            if (previewFlashMode == 'A') {
+                Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                if (aeState != null) {
+                    if (currentPreviewFlashMode != 'O' && aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED) {
+                        setFlashMode(captureRequestBuilder, 'O');
+                        setRepeatingRequestAfterSetFlash();
+                    }
+//                    } else if (currentPreviewFlashMode == 'O' && aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
+//                        setFlashMode(captureRequestBuilder, 'F');
+//                        setRepeatingRequestAfterSetFlash();
+//                    }
+                }
+            }
+
+        }
+
+    };
+
+
+    private CameraCaptureSession.CaptureCallback captureCallbackTakePicture
             = new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) {
@@ -149,7 +178,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                 case STATE_WAITING_LOCK: {
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState == null) {
-                        captureStillPicture(result.get(CaptureResult.CONTROL_AE_STATE));
+                        captureStillPicture();
                     } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
                             CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
                         // CONTROL_AE_STATE can be null on some devices
@@ -157,7 +186,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         if (aeState == null ||
                                 aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
                             mState = STATE_PICTURE_TAKEN;
-                            captureStillPicture(aeState);
+                            captureStillPicture();
                         } else {
                             runPrecaptureSequence();
                         }
@@ -179,7 +208,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
                     if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
                         mState = STATE_PICTURE_TAKEN;
-                        captureStillPicture(aeState);
+                        captureStillPicture();
                     }
                     break;
                 }
@@ -263,13 +292,13 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private FlutterMethodListener flutterMethodListener;
     private boolean hasBarcodeReader;
     private char previewFlashMode;
+    private char currentPreviewFlashMode;
     private int firebaseOrientation;
     private boolean isCameraVisible = true;
     private boolean isDestroy;
     private File file;
     private ImageReader readerCapture;
     private MethodChannel.Result resultMethodChannel;
-    private char captureFlashMode;
     private CaptureRequest mainPreviewRequest;
     private TakePictureImageListener takePictureImageListener;
     private Point displaySize;
@@ -301,9 +330,9 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         this.previewFlashMode = flashMode;
         displaySize = new Point();
         activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
-        if(isFillScale == true) //fill
+        if (isFillScale == true) //fill
             linearLayout.setLayoutParams(new FrameLayout.LayoutParams(
-               displaySize.x,
+                    displaySize.x,
                     displaySize.y));
 
         textureView = new AutoFitTextureView(activity);
@@ -478,7 +507,21 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         backgroundThread.start();
         backgroundThread2 = new HandlerThread("Camera Background2");
         backgroundThread2.start();
-        backgroundHandler = new Handler(backgroundThread.getLooper());
+        backgroundHandler = new Handler(backgroundThread.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                switch (msg.what) {
+                    case MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT:
+                        mState = STATE_PICTURE_TAKEN;
+                        captureStillPicture();
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        };
         backgroundHandler2 = new Handler(backgroundThread2.getLooper());
     }
 
@@ -584,15 +627,19 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     public void changeFlashMode(char previewFlashMode) {
         this.previewFlashMode = previewFlashMode;
-        if (hasBarcodeReader) {
-            setFlashMode(captureRequestBuilder, previewFlashMode);
-            try {
-                cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), mCaptureCallback, backgroundHandler);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            }
+        setFlashMode(captureRequestBuilder, previewFlashMode);
+        setRepeatingRequestAfterSetFlash();
+    }
+
+    private void setRepeatingRequestAfterSetFlash() {
+        try {
+            if (hasBarcodeReader)
+                cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), captureCallbackBarcodeReader, backgroundHandler);
+            else
+                cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), captureCallbackTakePicture, backgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
         }
-//        setRepeatingRequest();
     }
 
 
@@ -622,7 +669,9 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     }
 
     private void setFlashMode(CaptureRequest.Builder previewRequestBuilder, char flashMode) {
+        currentPreviewFlashMode = flashMode;
         if (flashSupported) {
+
             switch (flashMode) {
                 case 'A':
                     previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
@@ -631,12 +680,16 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                             CaptureRequest.FLASH_MODE_OFF);
                     break;
                 case 'O':
-                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
-                            CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
-                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
-                            CaptureRequest.FLASH_MODE_OFF);
-
-//                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+                    if (!hasBarcodeReader) {
+                        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                                CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+                        previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
+                                CaptureRequest.FLASH_MODE_OFF);
+                    } else {
+                        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                                CaptureRequest.CONTROL_AE_MODE_ON);
+                        previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+                    }
                     break;
                 case 'F':
                     previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -649,9 +702,9 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         try {
             mainPreviewRequest = captureRequestBuilder.build();
             if (hasBarcodeReader)
-                cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, null, backgroundHandler);
+                cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackBarcodeReader, backgroundHandler);
             else
-                cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, mCaptureCallback, backgroundHandler);
+                cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackTakePicture, backgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -811,20 +864,19 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     }
 
 
-    public void takePicture(final MethodChannel.Result resultMethodChannel, final char captureFlashMode) {
+    public void takePicture(final MethodChannel.Result resultMethodChannel) {
         this.resultMethodChannel = resultMethodChannel;
-        this.captureFlashMode = captureFlashMode;
         if (checkAutoFocusSupported()) {
-//            capturePictureWhenFocusTimeout();
+            capturePictureWhenFocusTimeout();
             lockFocus();
         } else {
-            captureStillPicture(null);
+            captureStillPicture();
         }
     }
 
     private void capturePictureWhenFocusTimeout() {
         if (backgroundHandler != null) {
-            backgroundHandler.sendEmptyMessageDelayed(100,
+            backgroundHandler.sendEmptyMessageDelayed(MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT,
                     800);
         }
     }
@@ -838,7 +890,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
             // Tell #mCaptureCallback to wait for the lock.
             mState = STATE_WAITING_LOCK;
-            cameraCaptureSessions.capture(captureRequestBuilder.build(), mCaptureCallback,
+            cameraCaptureSessions.capture(captureRequestBuilder.build(), captureCallbackTakePicture,
                     backgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -847,7 +899,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     /**
      * Run the precapture sequence for capturing a still image. This method should be called when
-     * we get a response in {@link #mCaptureCallback} from {@link #lockFocus()}.
+     * we get a response in {@link #captureCallbackTakePicture} from {@link #lockFocus()}.
      */
     private void runPrecaptureSequence() {
         try {
@@ -856,7 +908,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
             // Tell #mCaptureCallback to wait for the precapture sequence to be set.
             mState = STATE_WAITING_PRECAPTURE;
-            cameraCaptureSessions.capture(captureRequestBuilder.build(), mCaptureCallback,
+            cameraCaptureSessions.capture(captureRequestBuilder.build(), captureCallbackTakePicture,
                     backgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -889,13 +941,11 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     /**
      * Capture a still picture. This method should be called when we get a response in
-     * {@link #mCaptureCallback} from both {@link #lockFocus()}.
-     *
-     * @param aeState
+     * {@link #captureCallbackTakePicture} from both {@link #lockFocus()}.
      */
-    private void captureStillPicture(Integer aeState) {
+    private void captureStillPicture() {
         try {
-
+            removeCaptureMessage();
             // This is the CaptureRequest.Builder that we use to take a picture.
             final CaptureRequest.Builder captureBuilder =
                     cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -933,6 +983,12 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         }
     }
 
+    private void removeCaptureMessage() {
+        if (backgroundHandler != null) {
+            backgroundHandler.removeMessages(MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT);
+        }
+    }
+
     private void showToast(final String s) {
         activity.runOnUiThread(new Runnable() {
             @Override
@@ -947,7 +1003,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             // Reset the auto-focus trigger
             captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                     CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-            cameraCaptureSessions.capture(captureRequestBuilder.build(), mCaptureCallback,
+            cameraCaptureSessions.capture(captureRequestBuilder.build(), captureCallbackTakePicture,
                     backgroundHandler);
 
             createCameraPreview();
