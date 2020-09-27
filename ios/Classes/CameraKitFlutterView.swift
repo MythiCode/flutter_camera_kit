@@ -78,25 +78,32 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                     }
                 } else if FlutterMethodCall.method == "resumeCamera" {
                     if  self.initCameraFinished == true {
-                        self.beginSession(isFirst: false)
+                        //self.beginSession(isFirst: false)
+                        self.session.startRunning()
+                        self.isCameraVisible = true
                     }
             }
                 else if FlutterMethodCall.method == "pauseCamera" {
-                    self.stopCamera()
+                     if self.initCameraFinished == true {
+                        self.stopCamera()
+                        self.isCameraVisible = false
+                    }
                 }
             else if FlutterMethodCall.method == "changeFlashMode" {
                     self.setFlashMode(flashMode: (myArgs?["flashMode"] ) as! String)
                     self.changeFlashMode()
                 } else if FlutterMethodCall.method == "setCameraVisible" {
                     let cameraVisibility = (myArgs?["isCameraVisible"] as! Bool)
-
+                    //print("isCameraVisible: " + String(isCameraVisible))
                     if cameraVisibility == true {
                         if self.isCameraVisible == false {
-                         self.beginSession(isFirst: false)
+                            self.session.startRunning()
+                            self.isCameraVisible = true
                         }
                     } else {
                            if self.isCameraVisible == true {
-                         self.stopCamera()
+                                self.stopCamera()
+                                self.isCameraVisible = false
                         }
                     }
                   
