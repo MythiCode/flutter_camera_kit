@@ -793,6 +793,9 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     private void initialImageReader() {
         if (hasBarcodeReader) {
+//            Size m = Collections.max(
+//                    Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
+//                    new CompareSizesByArea());
             firebaseOrientation = getFirebaseOrientation();
             imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(),
                     ImageFormat.YUV_420_888, 2);
@@ -822,24 +825,33 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     public void onImageAvailable(ImageReader reader) {
         final Image image = reader.acquireLatestImage();
         if (image != null) {
-            detector.detectInImage(FirebaseVisionImage.fromMediaImage(image, firebaseOrientation))
-                    .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionBarcode>>() {
-                        @Override
-                        public void onSuccess(List<FirebaseVisionBarcode> firebaseVisionBarcodes) {
-                            //thread main
-                            if (firebaseVisionBarcodes.size() > 0) {
-                                for (FirebaseVisionBarcode visionBarcode : firebaseVisionBarcodes) {
-                                    flutterMethodListener.onBarcodeRead(visionBarcode.getRawValue());
+            try {
+                detector.detectInImage(FirebaseVisionImage.fromMediaImage(image, firebaseOrientation))
+                        .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionBarcode>>() {
+                            @Override
+                            public void onSuccess(List<FirebaseVisionBarcode> firebaseVisionBarcodes) {
+                                //thread main
+                                if (firebaseVisionBarcodes.size() > 0) {
+                                    for (FirebaseVisionBarcode visionBarcode : firebaseVisionBarcodes) {
+                                        flutterMethodListener.onBarcodeRead(visionBarcode.getRawValue());
+                                    }
                                 }
                             }
-                        }
-                    }).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    System.out.println("barcode read failed: " + e.getMessage());
-                }
-            });
-            image.close();
+                        }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        System.out.println("barcode read failed: " + e.getMessage());
+                    }
+                });
+            }
+            catch (OutOfMemoryError e) {
+                System.gc();
+                    //Sometimes out of memory error occurred, ignore it
+            }
+            finally {
+                image.close();
+            }
+
         }
     }
 

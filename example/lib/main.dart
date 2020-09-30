@@ -29,9 +29,6 @@ class _MyAppState extends State<MyApp> {
       onBarcodeRead: (barcode) {
         print("Flutter read barcode: " + barcode);
       },
-      onTakePicture: (filePath) {
-        print("Flutter take picture: " + filePath);
-      },
       previewFlashMode: CameraFlashMode.auto,
       cameraKitController: cameraKitController,
     );
@@ -62,11 +59,8 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
         body: Container(
-          height: 400,
+          height: 2000,
           child: Column(
             children: <Widget>[
               Expanded(
@@ -76,54 +70,51 @@ class _MyAppState extends State<MyApp> {
                 onBarcodeRead: (barcode) {
                   print("Flutter read barcode: " + barcode);
                 },
-                onTakePicture: (filePath) {
-                  print("Flutter take picture: " + filePath);
-                },
                 previewFlashMode: CameraFlashMode.auto,
                 cameraKitController: cameraKitController,
               )),
-              Row(
-                children: <Widget>[
-                  RaisedButton(
-                    child: Text("Flash OFF"),
-                    onPressed: () {
-                      setState(() {
-                        cameraKitController
-                            .changeFlashMode(CameraFlashMode.off);
-                        _platformVersion = "bbasda";
-                      });
-                    },
-                  ),
-                  RaisedButton(
-                    child: Text("Capture"),
-                    onPressed: () {
-                      cameraKitController.takePicture().then((value) => print(value));
-                    },
-                  ),
-                  RaisedButton(
-                    child: Text("Flash On"),
-                    onPressed: () {
-                      setState(() {
-                        cameraKitController.changeFlashMode(CameraFlashMode.on);
-                        _platformVersion = "bbasda";
-                      });
-                    },
-                  ),
-                ],
-              ),
-              Builder(
-                builder: (context) => RaisedButton(
-                  child: Text("GO"),
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => Scaffold(
-                                  body: Text("Go is Here"),
-                                )));
-                  },
-                ),
-              )
+//              Row(
+//                children: <Widget>[
+//                  RaisedButton(
+//                    child: Text("Flash OFF"),
+//                    onPressed: () {
+//                      setState(() {
+//                        cameraKitController
+//                            .changeFlashMode(CameraFlashMode.off);
+//                        _platformVersion = "bbasda";
+//                      });
+//                    },
+//                  ),
+//                  RaisedButton(
+//                    child: Text("Capture"),
+//                    onPressed: () {
+//                      cameraKitController.takePicture().then((value) => print(value));
+//                    },
+//                  ),
+//                  RaisedButton(
+//                    child: Text("Flash On"),
+//                    onPressed: () {
+//                      setState(() {
+//                        cameraKitController.changeFlashMode(CameraFlashMode.on);
+//                        _platformVersion = "bbasda";
+//                      });
+//                    },
+//                  ),
+//                ],
+//              ),
+//              Builder(
+//                builder: (context) => RaisedButton(
+//                  child: Text("GO"),
+//                  onPressed: () {
+//                    Navigator.push(
+//                        context,
+//                        MaterialPageRoute(
+//                            builder: (context) => Scaffold(
+//                                  body: Text("Go is Here"),
+//                                )));
+//                  },
+//                ),
+//              )
             ],
           ),
         ),

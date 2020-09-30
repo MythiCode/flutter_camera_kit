@@ -206,6 +206,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
             if(hasBarcodeReader) {
                 videoDataOutput = AVCaptureVideoDataOutput()
                 videoDataOutput.alwaysDiscardsLateVideoFrames=true
+               
                 videoDataOutputQueue = DispatchQueue(label: "VideoDataOutputQueue")
                 videoDataOutput.setSampleBufferDelegate(self, queue:self.videoDataOutputQueue)
                 if session.canAddOutput(videoDataOutput!){
