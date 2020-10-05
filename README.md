@@ -23,13 +23,6 @@ You don't need to add any code in your project after installation.
 Add `io.flutter.embedded_views_preview` in info.plist with value `YES`.
 Add `Privacy - Camera Usage Description` in info.plist.
 
-## Android
-Add this code to your activity's tag manifest for better performance in barcode reader mode.
-```
-        android:largeHeap="true"
-        android:hardwareAccelerated="true"
-```
-
 # Usage
 ##Sample Usage
 For use plugin, You shoude an instance of `CameraKitController` then initial `CameraKitView` passing `CameraKitController` instance to it.
@@ -83,5 +76,6 @@ This plugin automatically manage pause and resume camera based on android, iOS l
     cameraKitController.resumeCamera();
 ```
  # Notes
- This project is teset on iPhone6, samsung galaxy S7, samsung J7, iPhone pro max.
- Auto flash has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
+ This project is teset on iPhone6, samsung galaxy S7, samsung J7, samsung note 10, samsung s10, iPhone pro max.
+ Auto flash for capture has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
+ Auto flash for camera preview (scanning barcode mode) dosen't work for samsung J7

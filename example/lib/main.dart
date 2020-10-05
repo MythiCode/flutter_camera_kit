@@ -73,48 +73,51 @@ class _MyAppState extends State<MyApp> {
                 previewFlashMode: CameraFlashMode.auto,
                 cameraKitController: cameraKitController,
               )),
-//              Row(
-//                children: <Widget>[
-//                  RaisedButton(
-//                    child: Text("Flash OFF"),
-//                    onPressed: () {
-//                      setState(() {
-//                        cameraKitController
-//                            .changeFlashMode(CameraFlashMode.off);
-//                        _platformVersion = "bbasda";
-//                      });
-//                    },
-//                  ),
-//                  RaisedButton(
-//                    child: Text("Capture"),
-//                    onPressed: () {
-//                      cameraKitController.takePicture().then((value) => print(value));
-//                    },
-//                  ),
-//                  RaisedButton(
-//                    child: Text("Flash On"),
-//                    onPressed: () {
-//                      setState(() {
-//                        cameraKitController.changeFlashMode(CameraFlashMode.on);
-//                        _platformVersion = "bbasda";
-//                      });
-//                    },
-//                  ),
-//                ],
-//              ),
-//              Builder(
-//                builder: (context) => RaisedButton(
-//                  child: Text("GO"),
-//                  onPressed: () {
-//                    Navigator.push(
-//                        context,
-//                        MaterialPageRoute(
-//                            builder: (context) => Scaffold(
-//                                  body: Text("Go is Here"),
-//                                )));
-//                  },
-//                ),
-//              )
+//              Container(height: 250),
+              Row(
+                children: <Widget>[
+                  RaisedButton(
+                    child: Text("Flash OFF"),
+                    onPressed: () {
+                      setState(() {
+                        cameraKitController
+                            .changeFlashMode(CameraFlashMode.off);
+                        _platformVersion = "bbasda";
+                      });
+                    },
+                  ),
+                  RaisedButton(
+                    child: Text("Capture"),
+                    onPressed: () {
+                      cameraKitController
+                          .takePicture()
+                          .then((value) => print(value));
+                    },
+                  ),
+                  RaisedButton(
+                    child: Text("Flash On"),
+                    onPressed: () {
+                      setState(() {
+                        cameraKitController.changeFlashMode(CameraFlashMode.on);
+                        _platformVersion = "bbasda";
+                      });
+                    },
+                  ),
+                ],
+              ),
+              Builder(
+                builder: (context) => RaisedButton(
+                  child: Text("GO"),
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Scaffold(
+                                  body: Text("Go is Here"),
+                                )));
+                  },
+                ),
+              )
             ],
           ),
         ),

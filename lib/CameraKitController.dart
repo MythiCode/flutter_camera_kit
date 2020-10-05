@@ -1,7 +1,7 @@
 import 'package:camerakit/CameraKitView.dart';
 
 ///This controller is used to control CameraKiView.dart
-class CameraKitController{
+class CameraKitController {
   CameraKitView cameraKitView;
 
   ///pause camera while stop camera preview.
@@ -9,16 +9,17 @@ class CameraKitController{
   pauseCamera() {
     cameraKitView.viewState.controller.pauseCamera();
   }
+
   ///Closing camera and dispose all resource
   closeCamera() {
     cameraKitView.viewState.controller.closeCamera();
   }
+
   ///resume camera while resume camera preview.
   ///Plugin manage automatically resume camera based android, iOS lifecycle and widget visibility
   resumeCamera() {
     cameraKitView.viewState.controller.resumeCamera();
   }
-
 
   ///Use this method for taking picture in take picture mode
   ///This method return path of image

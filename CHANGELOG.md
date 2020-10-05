@@ -1,3 +1,5 @@
-## 0.0.1
 
-* TODO: Describe initial release.
+
+## 0.0.46
+
+* Android aspect ratio set to 16:9

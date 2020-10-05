@@ -585,6 +585,10 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                 imageReader.close();
                 imageReader = null;
             }
+            if(null != readerCapture) {
+                readerCapture.close();
+                readerCapture = null;
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while trying to lock camera closing.", e);
         } finally {
@@ -599,8 +603,11 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         List<Size> bigEnough = new ArrayList<>();
         // Collect the supported resolutions that are smaller than the preview Surface
         List<Size> notBigEnough = new ArrayList<>();
-        int w = aspectRatio.getWidth();
-        int h = aspectRatio.getHeight();
+//        int w = aspectRatio.getWidth();
+//        int h = aspectRatio.getHeight();
+
+        int w = 16;
+        int h = 9;
         for (Size option : choices) {
             if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight &&
                     option.getHeight() == option.getWidth() * h / w) {
@@ -843,12 +850,10 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         System.out.println("barcode read failed: " + e.getMessage());
                     }
                 });
-            }
-            catch (OutOfMemoryError e) {
+            } catch (OutOfMemoryError e) {
                 System.gc();
-                    //Sometimes out of memory error occurred, ignore it
-            }
-            finally {
+                //Sometimes out of memory error occurred, ignore it
+            } finally {
                 image.close();
             }
 
