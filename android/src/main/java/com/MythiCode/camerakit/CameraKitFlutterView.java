@@ -28,29 +28,14 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull final MethodChannel.Result result) {
         if (call.method.equals("requestPermission")) {
+            boolean hasVideoRecord = call.argument("hasVideoRecord");
             if (ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(activityPluginBinding.getActivity(), new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-                activityPluginBinding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
-                    @Override
-                    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-                        for (int i :
-                                grantResults) {
-                            if (i == PackageManager.PERMISSION_DENIED) {
-                                try {
-                                    result.success(false);
-                                }catch (Exception e){
-
-                                }
-                                return false;
-                            }
-                        }
-                        result.success(true);
-                        return false;
-                    }
-                });
+                requestPermission(result, hasVideoRecord);
                 return;
             } else {
-                result.success(true);
+                if (hasVideoRecord && ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+                    requestPermission(result, hasVideoRecord);
+                else result.success(true);
             }
         } else if (call.method.equals("initCamera")) {
             boolean hasBarcodeReader = call.argument("hasBarcodeReader");
@@ -72,9 +57,37 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
         } else if (call.method.equals("setCameraVisible")) {
             boolean isCameraVisible = call.argument("isCameraVisible");
             getCameraView().setCameraVisible(isCameraVisible);
+        } else if (call.method.equals("startVideoRecord")) {
+            getCameraView().startVideoRecord(call.argument("filePath").toString());
+        } else if (call.method.equals("stopVideoRecord")) {
+            getCameraView().stopVideoRecord(result);
         } else {
             result.notImplemented();
         }
+    }
+
+    private void requestPermission(final MethodChannel.Result result, boolean hasVideoRecord) {
+        ActivityCompat.requestPermissions(activityPluginBinding.getActivity()
+                , !hasVideoRecord ? new String[]{Manifest.permission.CAMERA} : new String[]{Manifest.permission.CAMERA
+                        , Manifest.permission.RECORD_AUDIO}, REQUEST_CAMERA_PERMISSION);
+        activityPluginBinding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+            @Override
+            public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                for (int i :
+                        grantResults) {
+                    if (i == PackageManager.PERMISSION_DENIED) {
+                        try {
+                            result.success(false);
+                        } catch (Exception e) {
+
+                        }
+                        return false;
+                    }
+                }
+                result.success(true);
+                return false;
+            }
+        });
     }
 
     private CameraView2 getCameraView() {

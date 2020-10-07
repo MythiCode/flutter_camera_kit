@@ -19,9 +19,11 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -51,6 +53,7 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -131,12 +134,20 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private static final int MAX_PREVIEW_HEIGHT = 1080;
 
     private static SparseIntArray ORIENTATIONS = new SparseIntArray();
+    private static SparseIntArray INVERSE_ORIENTATIONS = new SparseIntArray();
 
     static {
-        ORIENTATIONS.append(Surface.ROTATION_0, 0);
-        ORIENTATIONS.append(Surface.ROTATION_90, 90);
-        ORIENTATIONS.append(Surface.ROTATION_180, 180);
-        ORIENTATIONS.append(Surface.ROTATION_270, 270);
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
+
+    static {
+        INVERSE_ORIENTATIONS.append(Surface.ROTATION_0, 270);
+        INVERSE_ORIENTATIONS.append(Surface.ROTATION_90, 180);
+        INVERSE_ORIENTATIONS.append(Surface.ROTATION_180, 90);
+        INVERSE_ORIENTATIONS.append(Surface.ROTATION_270, 0);
     }
 
 
@@ -154,10 +165,6 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         setFlashMode(captureRequestBuilder, 'O');
                         setRepeatingRequestAfterSetFlash();
                     }
-//                    } else if (currentPreviewFlashMode == 'O' && aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
-//                        setFlashMode(captureRequestBuilder, 'F');
-//                        setRepeatingRequestAfterSetFlash();
-//                    }
                 }
             }
 
@@ -296,12 +303,20 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private int firebaseOrientation;
     private boolean isCameraVisible = true;
     private boolean isDestroy;
-    private File file;
+
     private ImageReader readerCapture;
     private MethodChannel.Result resultMethodChannel;
     private CaptureRequest mainPreviewRequest;
     private TakePictureImageListener takePictureImageListener;
     private Point displaySize;
+    private File filePicture;
+    private boolean mIsRecordingVideo;
+    private MeteringRectangle[] mAFRegions;
+    private MeteringRectangle[] mAERegions;
+    private boolean mAutoFocusSupported;
+    private MediaRecorder mMediaRecorder;
+    private Size mVideoSize;
+    private String videoFilePath;
 
 
     public CameraView2(Activity activity, FlutterMethodListener flutterMethodListener) {
@@ -428,6 +443,8 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
                         maxPreviewHeight, largest);
 
+                mVideoSize = chooseVideoSize(map.getOutputSizes(MediaRecorder.class));
+
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 int orientation = activity.getResources().getConfiguration().orientation;
                 if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -438,6 +455,8 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     textureView.setAspectRatio(
                             previewSize.getHeight(), previewSize.getWidth());
                 }
+
+                setAutoFocusSupported();
 
                 return;
             }
@@ -585,7 +604,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                 imageReader.close();
                 imageReader = null;
             }
-            if(null != readerCapture) {
+            if (null != readerCapture) {
                 readerCapture.close();
                 readerCapture = null;
             }
@@ -594,6 +613,23 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         } finally {
             cameraOpenCloseLock.release();
         }
+    }
+
+    private Size chooseVideoSize(Size[] choices) {
+        List<Size> videoSizes = Arrays.asList(choices);
+        List<Size> supportedVideoSizes = new ArrayList<>();
+        Collections.sort(videoSizes, new CompareSizesByArea());
+        for (int i = videoSizes.size() - 1; i >= 0; i--) {
+            if (videoSizes.get(i).getWidth() <= MAX_PREVIEW_WIDTH &&
+                    videoSizes.get(i).getHeight() <= MAX_PREVIEW_HEIGHT) {
+                supportedVideoSizes.add(videoSizes.get(i));
+                if (videoSizes.get(i).getWidth() == videoSizes.get(i).getHeight() *
+                        16 / 9) {
+                    return videoSizes.get(i);
+                }
+            }
+        }
+        return supportedVideoSizes.size() > 0 ? supportedVideoSizes.get(0) : choices[choices.length - 1];
     }
 
     private static Size chooseOptimalSize(Size[] choices, int textureViewWidth,
@@ -669,10 +705,34 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         }
     }
 
-    private boolean checkAutoFocusSupported() {
+    private void setAutoFocusSupported() {
         int[] modes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
-        return !(modes == null || modes.length == 0 ||
+        mAutoFocusSupported = !(modes == null || modes.length == 0 ||
                 (modes.length == 1 && modes[0] == CameraCharacteristics.CONTROL_AF_MODE_OFF));
+    }
+
+    void updateAutoFocus() {
+        if (true  /*mAutoFocus*/) {
+            if (!mAutoFocusSupported) {
+                captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                        CaptureRequest.CONTROL_AF_MODE_OFF);
+            } else {
+                if (mIsRecordingVideo) {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                            CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+                } else {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                            CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                }
+            }
+        } else {
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                    CaptureRequest.CONTROL_AF_MODE_OFF);
+        }
+        mAFRegions = AutoFocusHelper.getZeroWeightRegion();
+        mAERegions = AutoFocusHelper.getZeroWeightRegion();
+        captureRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, mAFRegions);
+        captureRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, mAERegions);
     }
 
     private void setFlashMode(CaptureRequest.Builder previewRequestBuilder, char flashMode) {
@@ -688,10 +748,17 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     break;
                 case 'O':
                     if (!hasBarcodeReader) {
-                        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
-                                CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
-                        previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
-                                CaptureRequest.FLASH_MODE_OFF);
+                        if(!mIsRecordingVideo) {
+                            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                                    CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+                            previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
+                                    CaptureRequest.FLASH_MODE_OFF);
+                        } else {
+                            previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
+                                    CaptureRequest.FLASH_MODE_TORCH);
+//                            previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
+//                                    CaptureRequest.FLASH_MODE_SINGLE);
+                        }
                     } else {
                         previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
                                 CaptureRequest.CONTROL_AE_MODE_ON);
@@ -734,6 +801,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
             captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            updateAutoFocus();
             setFlashMode(captureRequestBuilder, previewFlashMode);
             captureRequestBuilder.addTarget(surface);
             initialImageReader();
@@ -767,7 +835,6 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private List<Surface> getSurfaceList() {
         readerCapture = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
         readerCapture.setOnImageAvailableListener(takePictureImageListener, backgroundHandler);
-        file = new File(activity.getCacheDir(), "pic.jpg");
         if (hasBarcodeReader)
             return Arrays.asList(surface, imageReader.getSurface());
         else return Arrays.asList(surface, readerCapture.getSurface());
@@ -883,7 +950,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     public void takePicture(final MethodChannel.Result resultMethodChannel) {
         this.resultMethodChannel = resultMethodChannel;
-        if (checkAutoFocusSupported()) {
+        if (mAutoFocusSupported) {
             capturePictureWhenFocusTimeout();
             lockFocus();
         } else {
@@ -956,6 +1023,8 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         }
     };
 
+
+
     /**
      * Capture a still picture. This method should be called when we get a response in
      * {@link #captureCallbackTakePicture} from both {@link #lockFocus()}.
@@ -967,8 +1036,9 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             final CaptureRequest.Builder captureBuilder =
                     cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
 
+            filePicture = new File(activity.getCacheDir(), "pic.jpg");
 
-            takePictureImageListener = new TakePictureImageListener(flutterMethodListener, resultMethodChannel, file);
+            takePictureImageListener = new TakePictureImageListener(flutterMethodListener, resultMethodChannel, filePicture);
             readerCapture.setOnImageAvailableListener(takePictureImageListener, backgroundHandler);
             captureBuilder.addTarget(readerCapture.getSurface());
 
@@ -1000,6 +1070,132 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         }
     }
 
+    private void setupMediaRecorder(String filePath) throws IOException {
+
+        mMediaRecorder = new MediaRecorder();
+        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        if (filePath.equals(""))
+            filePath = activity.getCacheDir() + "/video.mp4";
+//        final File dir = activity.getExternalFilesDir(null);
+//        filePath = (dir == null ? "" : (dir.getAbsolutePath() + "/"))
+//                + "SystemcurrentTimeMillis2" + ".mp4";
+        videoFilePath = filePath;
+        mMediaRecorder.setOutputFile(filePath);
+        mMediaRecorder.setVideoEncodingBitRate(10000000);
+        mMediaRecorder.setVideoFrameRate(30);
+
+        mMediaRecorder.setVideoSize(mVideoSize.getWidth(), mVideoSize.getHeight());
+        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        switch (sensorOrientation) {
+            case 90:
+                mMediaRecorder.setOrientationHint(ORIENTATIONS.get(rotation));
+                break;
+            case 270:
+                mMediaRecorder.setOrientationHint(INVERSE_ORIENTATIONS.get(rotation));
+                break;
+        }
+        mMediaRecorder.prepare();
+    }
+
+
+    public void stopVideoRecord(MethodChannel.Result result) {
+
+
+        mIsRecordingVideo = false;
+
+        if (null != mMediaRecorder) {
+            mMediaRecorder.stop();
+            mMediaRecorder.reset();
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+        }
+        showToast("Video saved: " + videoFilePath);
+        result.success(videoFilePath);
+        closeCamera();
+        openCamera();
+
+    }
+
+    public void startVideoRecord(String filePath) {
+        if(mIsRecordingVideo == true)
+            return;
+        if (null == cameraDevice || !textureView.isAvailable() || null == previewSize) {
+            return;
+        }
+        try {
+
+            mIsRecordingVideo = true;
+            setupMediaRecorder(filePath);
+            SurfaceTexture texture = textureView.getSurfaceTexture();
+            assert texture != null;
+            texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            List<Surface> surfaces = new ArrayList<>();
+
+            // Set up Surface for the camera preview
+            Surface previewSurface = new Surface(texture);
+            surfaces.add(previewSurface);
+            captureRequestBuilder.addTarget(previewSurface);
+
+            // Set up Surface for the MediaRecorder
+            Surface recorderSurface = mMediaRecorder.getSurface();
+            surfaces.add(recorderSurface);
+            captureRequestBuilder.addTarget(recorderSurface);
+
+            // Start a capture session
+            // Once the session starts, we can update the UI and start recording
+            cameraDevice.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
+
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
+                    cameraCaptureSessions = cameraCaptureSession;
+                    try {
+                        // Auto focus should be continuous for camera preview.
+//                        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+//                            CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+                        updateAutoFocus();
+                        // Flash is automatically enabled when necessary.
+                        setFlashMode(captureRequestBuilder, previewFlashMode);
+
+                        // For test
+                        Integer stabilizationMode = captureRequestBuilder.
+                                get(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE);
+                        if (stabilizationMode != null &&
+                                stabilizationMode == CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF) {
+                            captureRequestBuilder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON);
+                        }
+
+                        // Finally, we start displaying the camera preview.
+                        mainPreviewRequest = captureRequestBuilder.build();
+                        cameraCaptureSession.setRepeatingRequest(mainPreviewRequest, captureCallbackBarcodeReader, backgroundHandler);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                // Start recording
+                                mMediaRecorder.start();
+                            }
+                        });
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
+                    showToast("Start recording video configure failed");
+                }
+            }, backgroundHandler);
+        } catch (CameraAccessException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void removeCaptureMessage() {
         if (backgroundHandler != null) {
             backgroundHandler.removeMessages(MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT);
@@ -1022,16 +1218,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
             cameraCaptureSessions.capture(captureRequestBuilder.build(), captureCallbackTakePicture,
                     backgroundHandler);
-
             createCameraPreview();
-//            setFlashMode(captureRequestBuilder, previewFlashMode);
-//
-//            // After this, the camera will go back to the normal state of preview.
-//            mState = STATE_PREVIEW;
-//            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-//                    CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
-//            cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, mCaptureCallback,
-//                    backgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }

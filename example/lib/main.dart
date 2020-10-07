@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camerakit/CameraKitController.dart';
 import 'package:camerakit/CameraKitView.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,14 +26,6 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     cameraKitController = CameraKitController();
     print("cameraKitController" + cameraKitController.toString());
-    cameraKitView = CameraKitView(
-      hasBarcodeReader: true,
-      onBarcodeRead: (barcode) {
-        print("Flutter read barcode: " + barcode);
-      },
-      previewFlashMode: CameraFlashMode.auto,
-      cameraKitController: cameraKitController,
-    );
     initPlatformState();
   }
 
@@ -65,12 +59,12 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               Expanded(
                   child: CameraKitView(
-                hasBarcodeReader: true,
+                cameraMode: CameraMode.video,
                 scaleType: ScaleTypeMode.fill,
                 onBarcodeRead: (barcode) {
                   print("Flutter read barcode: " + barcode);
                 },
-                previewFlashMode: CameraFlashMode.auto,
+                previewFlashMode: CameraFlashMode.on,
                 cameraKitController: cameraKitController,
               )),
 //              Container(height: 250),
@@ -105,19 +99,25 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ],
               ),
-              Builder(
-                builder: (context) => RaisedButton(
-                  child: Text("GO"),
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => Scaffold(
-                                  body: Text("Go is Here"),
-                                )));
+              Row(children: <Widget>[
+                RaisedButton(
+                  child: Text("Record"),
+                  onPressed: () async {
+                    final Directory extDir = await getExternalStorageDirectory();
+                    final String dirPath = '${extDir.path}/Movies/flutter_test';
+                    await Directory(dirPath).create(recursive: true);
+                    final String filePath = '$dirPath/video.mp4';
+                    cameraKitController.startVideoRecord("");
                   },
                 ),
-              )
+                RaisedButton(
+                  child: Text("Stop Record"),
+                  onPressed: () {
+                    cameraKitController.stopVideoRecord().then((value) =>
+                        {print("Flutter: video is saved: " + value)});
+                  },
+                )
+              ])
             ],
           ),
         ),

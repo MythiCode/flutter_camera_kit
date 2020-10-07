@@ -10,6 +10,7 @@ import 'CameraKitController.dart';
 
 enum CameraFlashMode { on, off, auto }
 enum ScaleTypeMode { fit, fill }
+enum CameraMode { barcode, picture, video }
 
 // ignore: must_be_immutable
 class CameraKitView extends StatefulWidget {
@@ -26,7 +27,11 @@ class CameraKitView extends StatefulWidget {
 
   ///True means scan barcode mode and false means take picture mode
   ///Because of performance reasons, you can't use barcode reader mode and take picture mode simultaneously.
-  final bool hasBarcodeReader;
+  bool hasBarcodeReader;
+
+  ///True means, client can start video record
+  ///In this mode you can using take picture method
+  bool hasVideoRecord;
 
   ///This parameter accepts 3 values. `CameraFlashMode.auto`, `CameraFlashMode.on` and `CameraFlashMode.off`.
   /// For changing value after initial use `changeFlashMode` method in controller.
@@ -39,13 +44,22 @@ class CameraKitView extends StatefulWidget {
 
   CameraKitView(
       {Key key,
-      this.hasBarcodeReader = false,
+      CameraMode cameraMode = CameraMode.picture,
       this.scaleType = ScaleTypeMode.fill,
       this.onBarcodeRead,
       this.previewFlashMode = CameraFlashMode.auto,
       this.cameraKitController,
       this.onPermissionDenied})
-      : super(key: key);
+      : super(key: key) {
+    if (cameraMode == CameraMode.barcode) {
+      this.hasBarcodeReader = true;
+    } else {
+      this.hasBarcodeReader = false;
+      if(cameraMode == CameraMode.video) {
+        this.hasVideoRecord = true;
+      }
+    }
+  }
 
   dispose() {
     viewState.disposeView();
@@ -185,7 +199,9 @@ class NativeCameraKitController {
 
   void initCamera() async {
     _channel.setMethodCallHandler(nativeMethodCallHandler);
-    _channel.invokeMethod('requestPermission').then((value) {
+    _channel.invokeMethod('requestPermission', {
+      "hasVideoRecord": widget.hasVideoRecord
+    }).then((value) {
       if (value) {
         _channel.invokeMethod('initCamera', {
           "hasBarcodeReader": widget.hasBarcodeReader,
@@ -234,5 +250,13 @@ class NativeCameraKitController {
   Future<void> setCameraVisible(bool isCameraVisible) {
     return _channel
         .invokeMethod('setCameraVisible', {"isCameraVisible": isCameraVisible});
+  }
+
+  startVideoRecord(String filePath) {
+    return _channel.invokeMethod('startVideoRecord', {"filePath": filePath});
+  }
+
+  Future<String> stopVideoRecord() {
+    return _channel.invokeMethod('stopVideoRecord');
   }
 }

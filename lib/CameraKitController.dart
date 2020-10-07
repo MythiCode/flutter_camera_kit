@@ -32,6 +32,14 @@ class CameraKitController {
     cameraKitView.viewState.controller.changeFlashMode(captureFlashMode);
   }
 
+  startVideoRecord(String filePath){
+    return cameraKitView.viewState.controller.startVideoRecord(filePath);
+  }
+
+  Future<String> stopVideoRecord(){
+    return cameraKitView.viewState.controller.stopVideoRecord();
+  }
+
   ///Connect view to this controller
   void setView(CameraKitView cameraKitView) {
     this.cameraKitView = cameraKitView;
