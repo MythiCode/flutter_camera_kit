@@ -1104,19 +1104,19 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
 
     public void stopVideoRecord(MethodChannel.Result result) {
-
-
         mIsRecordingVideo = false;
-
         if (null != mMediaRecorder) {
             mMediaRecorder.stop();
             mMediaRecorder.reset();
             mMediaRecorder.release();
             mMediaRecorder = null;
         }
-        showToast("Video saved: " + videoFilePath);
+        //showToast("Video saved: " + videoFilePath);
         result.success(videoFilePath);
-        closeCamera();
+        if (null != cameraDevice) {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
         openCamera();
 
     }
