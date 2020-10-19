@@ -106,8 +106,8 @@ class _MyAppState extends State<MyApp> {
                     final Directory extDir = await getExternalStorageDirectory();
                     final String dirPath = '${extDir.path}/Movies/flutter_test';
                     await Directory(dirPath).create(recursive: true);
-                    final String filePath = '$dirPath/video.mp4';
-                    cameraKitController.startVideoRecord("");
+                    final String filePath = '$dirPath/myvideo.mp4';
+                    cameraKitController.startVideoRecord(filePath);
                   },
                 ),
                 RaisedButton(
