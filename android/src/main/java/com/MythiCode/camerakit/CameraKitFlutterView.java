@@ -56,7 +56,8 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
             boolean hasBarcodeReader = call.argument("hasBarcodeReader");
             char flashMode = call.argument("flashMode").toString().charAt(0);
             boolean isFillScale = call.argument("isFillScale");
-            getCameraView().initCamera(hasBarcodeReader, flashMode, isFillScale);
+            int barcodeMode = call.argument("barcodeMode");
+            getCameraView().initCamera(hasBarcodeReader, flashMode, isFillScale, barcodeMode);
         } else if (call.method.equals("resumeCamera")) {
             getCameraView().resumeCamera();
 

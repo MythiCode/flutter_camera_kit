@@ -66,6 +66,7 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                   child: CameraKitView(
                 hasBarcodeReader: true,
+                barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS,
                 scaleType: ScaleTypeMode.fill,
                 onBarcodeRead: (barcode) {
                   print("Flutter read barcode: " + barcode);

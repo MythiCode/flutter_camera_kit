@@ -74,6 +74,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                         self.initCamera(hasBarcodeReader: (myArgs?["hasBarcodeReader"] as! Bool),
                                         flashMode: (myArgs?["flashMode"] ) as! String,isFillScale:
                                         (myArgs?["isFillScale"] ) as! Bool
+                            , barcodeMode:   (myArgs?["barcodeMode"] ) as! Int
                             )
                     }
                 } else if FlutterMethodCall.method == "resumeCamera" {
@@ -152,23 +153,28 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
         return previewView
     }
     
-    func initCamera(hasBarcodeReader: Bool, flashMode: String, isFillScale: Bool) {
+    func initCamera(hasBarcodeReader: Bool, flashMode: String, isFillScale: Bool, barcodeMode: Int) {
         self.hasBarcodeReader = hasBarcodeReader
         self.isFillScale = isFillScale
+        var myBarcodeMode: Int
         setFlashMode(flashMode: flashMode)
         if hasBarcodeReader == true{
-            let format = BarcodeFormat.all
-                let barcodeOptions = BarcodeScannerOptions(formats: format)
-
+//            let barcodeOptions = BarcodeScannerOptions(formats:
+//                BarcodeFormat(rawValue: barcodeMode))
+              if barcodeMode == 0 {
+                 myBarcodeMode = 65535
+             }
+              else {
+                myBarcodeMode = barcodeMode
+            }
+             let barcodeOptions = BarcodeScannerOptions(formats:
+                BarcodeFormat(rawValue: myBarcodeMode))
+//            let barcodeOptions = BarcodeScannerOptions(formats:
+//                .all)
                 // Create a barcode scanner.
                barcodeScanner = BarcodeScanner.barcodeScanner(options: barcodeOptions)
         }
-       
             self.setupAVCapture()
-  
-        
-        
- 
     }
     
     @available(iOS 10.0, *)

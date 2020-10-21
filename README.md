@@ -31,6 +31,7 @@ For use plugin, You shoude an instance of `CameraKitController` then initial `Ca
     cameraKitView = CameraKitView(
       cameraKitController: cameraKitController,
       hasBarcodeReader: true,
+      barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS
       scaleType: ScaleTypeMode.fill,
       previewFlashMode: CameraFlashMode.auto
       onPermissionDenied: () {
@@ -47,6 +48,22 @@ For use plugin, You shoude an instance of `CameraKitController` then initial `Ca
 `hasBarcodeReader`:
 True means scan barcode mode and false means take picture mode
 Because of performance reasons, you can't use barcode reader mode and take picture mode simultaneously.
+`barcodeFormat`:
+Set barcode format from available values, default value is FORMAT_ALL_FORMATS
+  FORMAT_ALL_FORMATS,
+  FORMAT_CODE_128,
+  FORMAT_CODE_39,
+  FORMAT_CODE_93,
+  FORMAT_CODABAR,
+  FORMAT_DATA_MATRIX,
+  FORMAT_EAN_13,
+  FORMAT_EAN_8,
+  FORMAT_ITF,
+  FORMAT_QR_CODE,
+  FORMAT_UPC_A,
+  FORMAT_UPC_E,
+  FORMAT_PDF417,
+  FORMAT_AZTEC
 `scaleType`:
 There are 2 modes `ScaleTypeMode.fill` and `ScaleTypeMode.fit` for this parameter.
 If you want camera preview fill your widget area, use `fill` mode. In this mode, camera preview may be croped for filling widget area.

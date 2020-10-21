@@ -10,6 +10,22 @@ import 'CameraKitController.dart';
 
 enum CameraFlashMode { on, off, auto }
 enum ScaleTypeMode { fit, fill }
+enum BarcodeFormats {
+  FORMAT_ALL_FORMATS,
+  FORMAT_CODE_128,
+  FORMAT_CODE_39,
+  FORMAT_CODE_93,
+  FORMAT_CODABAR,
+  FORMAT_DATA_MATRIX,
+  FORMAT_EAN_13,
+  FORMAT_EAN_8,
+  FORMAT_ITF,
+  FORMAT_QR_CODE,
+  FORMAT_UPC_A,
+  FORMAT_UPC_E,
+  FORMAT_PDF417,
+  FORMAT_AZTEC
+}
 
 // ignore: must_be_immutable
 class CameraKitView extends StatefulWidget {
@@ -32,6 +48,9 @@ class CameraKitView extends StatefulWidget {
   /// For changing value after initial use `changeFlashMode` method in controller.
   final CameraFlashMode previewFlashMode;
 
+  ///Set barcode format from available values, default value is FORMAT_ALL_FORMATS
+  final BarcodeFormats barcodeFormat;
+
   ///Controller for this widget
   final CameraKitController cameraKitController;
 
@@ -42,6 +61,7 @@ class CameraKitView extends StatefulWidget {
       this.hasBarcodeReader = false,
       this.scaleType = ScaleTypeMode.fill,
       this.onBarcodeRead,
+      this.barcodeFormat = BarcodeFormats.FORMAT_ALL_FORMATS,
       this.previewFlashMode = CameraFlashMode.auto,
       this.cameraKitController,
       this.onPermissionDenied})
@@ -72,10 +92,12 @@ class _BarcodeScannerViewState extends State<CameraKitView>
       visibilityDetector = VisibilityDetector(
           key: Key('visible-camerakit-key-1'),
           onVisibilityChanged: (visibilityInfo) {
-            if (visibilityInfo.visibleFraction == 0)
-              controller.setCameraVisible(false);
-            else
-              controller.setCameraVisible(true);
+            if(controller != null) {
+              if (visibilityInfo.visibleFraction == 0)
+                controller.setCameraVisible(false);
+              else
+                controller.setCameraVisible(true);
+            }
           },
           child: AndroidView(
             viewType: 'plugins/camera_kit',
@@ -190,7 +212,8 @@ class NativeCameraKitController {
         _channel.invokeMethod('initCamera', {
           "hasBarcodeReader": widget.hasBarcodeReader,
           "flashMode": _getCharFlashMode(widget.previewFlashMode),
-          "isFillScale": _getScaleTypeMode(widget.scaleType)
+          "isFillScale": _getScaleTypeMode(widget.scaleType),
+          "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat)
         });
       } else {
         widget.onPermissionDenied();
@@ -234,5 +257,41 @@ class NativeCameraKitController {
   Future<void> setCameraVisible(bool isCameraVisible) {
     return _channel
         .invokeMethod('setCameraVisible', {"isCameraVisible": isCameraVisible});
+  }
+
+  int _getBarcodeModeValue(BarcodeFormats barcodeMode)  {
+    switch(barcodeMode) {
+      case BarcodeFormats.FORMAT_ALL_FORMATS:
+        return 0;
+      case BarcodeFormats.FORMAT_CODE_128:
+        return 1;
+      case BarcodeFormats.FORMAT_CODE_39:
+        return 2;
+      case BarcodeFormats.FORMAT_CODE_93:
+        return 4;
+      case BarcodeFormats.FORMAT_CODABAR:
+        return 8;
+      case BarcodeFormats.FORMAT_DATA_MATRIX:
+        return 16;
+      case BarcodeFormats.FORMAT_EAN_13:
+        return 32;
+      case BarcodeFormats.FORMAT_EAN_8:
+        return 64;
+      case BarcodeFormats.FORMAT_ITF:
+        return 128;
+      case BarcodeFormats.FORMAT_QR_CODE:
+        return 256;
+      case BarcodeFormats.FORMAT_UPC_A:
+        return 512;
+      case BarcodeFormats.FORMAT_UPC_E:
+        return 1024;
+      case BarcodeFormats.FORMAT_PDF417:
+        return 2048;
+      case BarcodeFormats.FORMAT_AZTEC:
+        return 4096;
+
+      default: return 0;
+
+    }
   }
 }
