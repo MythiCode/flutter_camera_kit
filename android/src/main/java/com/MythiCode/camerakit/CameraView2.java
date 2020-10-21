@@ -72,8 +72,8 @@ import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT
 public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableListener {
 
     private static final int MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT = 100;
-    private final FirebaseVisionBarcodeDetector detector;
-    private final FirebaseVisionBarcodeDetectorOptions options;
+    private FirebaseVisionBarcodeDetector detector;
+    private FirebaseVisionBarcodeDetectorOptions options;
     private int mState = STATE_PREVIEW;
     private Activity activity;
     private Semaphore cameraOpenCloseLock = new Semaphore(1);
@@ -267,7 +267,6 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
 
-
         }
     };
 
@@ -323,12 +322,6 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
-        options = new FirebaseVisionBarcodeDetectorOptions.Builder()
-                .setBarcodeFormats(
-                        FORMAT_ALL_FORMATS
-                )
-                .build();
-        detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options);
         if (linearLayout == null) {
             linearLayout = new LinearLayout(activity);
             linearLayout.setLayoutParams(new LinearLayout.LayoutParams(
@@ -340,9 +333,18 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
         }
     }
 
-    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale) {
+    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
         this.hasBarcodeReader = hasBarcodeReader;
         this.previewFlashMode = flashMode;
+
+        if(hasBarcodeReader) {
+            options = new FirebaseVisionBarcodeDetectorOptions.Builder()
+                    .setBarcodeFormats(
+                            barcodeMode
+                    )
+                    .build();
+            detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options);
+        }
         displaySize = new Point();
         activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
         if (isFillScale == true) //fill

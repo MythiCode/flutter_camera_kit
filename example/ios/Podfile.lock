@@ -1,19 +1,13 @@
 PODS:
   - camerakit (0.0.1):
     - Flutter
-    - GoogleMLKit
     - GoogleMLKit/BarcodeScanning
   - Flutter (1.0.0)
   - GoogleDataTransport (7.3.0):
     - nanopb (~> 1.30906.0)
-  - GoogleMLKit (0.63.0):
-    - GoogleMLKit/Common (= 0.63.0)
   - GoogleMLKit/BarcodeScanning (0.63.0):
     - GoogleMLKit/MLKitCore
     - MLKitBarcodeScanning (~> 0.63.0)
-  - GoogleMLKit/Common (0.63.0):
-    - GoogleMLKit/MLKitCore
-    - MLKitCommon (~> 0.63.0)
   - GoogleMLKit/MLKitCore (0.63.0):
     - MLKitCommon (~> 0.63.0)
   - GoogleToolboxForMac/DebugUtils (2.2.2):
@@ -89,7 +83,7 @@ EXTERNAL SOURCES:
     :path: Flutter
 
 SPEC CHECKSUMS:
-  camerakit: 481c0d25c1e86f94cdf011088d771e189bf5eabe
+  camerakit: 95b9cf22f106c898605c23564f109584ee5bba53
   Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
   GoogleDataTransport: e85fb700c9b027079ce182c3d08e12e0f9618bb4
   GoogleMLKit: 99fc8402693f034ecea567485af4de2bbb3ca108
