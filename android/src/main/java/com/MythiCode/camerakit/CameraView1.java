@@ -2,10 +2,13 @@ package com.MythiCode.camerakit;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.PixelFormat;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.hardware.Camera;
+import android.media.ExifInterface;
 import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -15,61 +18,49 @@ import android.view.WindowManager;
 import android.widget.LinearLayout;
 
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.ml.vision.FirebaseVision;
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetector;
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.platform.PlatformView;
 
-import static android.graphics.PixelFormat.*;
+import static android.graphics.PixelFormat.JPEG;
+import static android.hardware.Camera.Parameters.FLASH_MODE_AUTO;
+import static android.hardware.Camera.Parameters.FLASH_MODE_OFF;
+import static android.hardware.Camera.Parameters.FLASH_MODE_ON;
 import static com.MythiCode.camerakit.Orientation.getSupportedRotation;
-import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT_ALL_FORMATS;
 
-public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
+public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface {
 
-    private static final int MAX_SAMPLE_SIZE = 8;
     private static final float MAX_SCREEN_RATIO = 16 / 9f;
 
-    private final FirebaseVisionBarcodeDetectorOptions options;
-    private final FirebaseVisionBarcodeDetector detector;
-    private  LinearLayout linearLayout;
+
     private Activity activity;
     private FlutterMethodListener flutterMethodListener;
     private SurfaceHolder mHolder;
     private Camera mCamera;
-    private boolean hasBarcodeReader;
+    private LinearLayout linearLayout;
+    //    private boolean hasBarcodeReader;
     private char previewFlashMode;
     private SurfaceView surfaceView;
     int currentRotation = 0;
-    private Camera.Parameters parameters;
+    private boolean isCameraVisible = true;
 
-    public CameraView1(Activity activity, FlutterMethodListener flutterMethodListener){
+    public CameraView1(Activity activity, FlutterMethodListener flutterMethodListener) {
         FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
-        options = new FirebaseVisionBarcodeDetectorOptions.Builder()
-                .setBarcodeFormats(
-                        FORMAT_ALL_FORMATS
-                )
-                .build();
-        detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options);
-        if (linearLayout == null) {
-            linearLayout = new LinearLayout(activity);
-            linearLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT));
-            linearLayout.setBackgroundColor(Color.parseColor("#000000"));
-        }
+
 
 
     }
 
-    public void initCamera(boolean hasTakePicture, boolean hasBarcodeReader, char flashMode) {
-        this.hasBarcodeReader = hasBarcodeReader;
+    public void initCamera(LinearLayout linearLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
+        this.linearLayout = linearLayout;
         this.previewFlashMode = flashMode;
         surfaceView = new SurfaceView(activity);
         surfaceView.setLayoutParams(new LinearLayout.LayoutParams(
@@ -79,7 +70,6 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         int height = convertDeviceHeightToSupportedAspectRatio(linearLayout.getWidth(), linearLayout.getHeight());
-//        surfaceView.layout(0, 0, linearLayout.getWidth(), 1440);
         linearLayout.addView(surfaceView);
     }
 
@@ -88,18 +78,10 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
     }
 
 
-    @Override
-    public View getView() {
-        return linearLayout;
-    }
 
-    @Override
-    public void dispose() {
-
-    }
 
     private static Camera.Size getOptimalPreviewSize(List<Camera.Size> sizes, int w, int h) {
-        final double ASPECT_TOLERANCE = 0.15;
+        final double ASPECT_TOLERANCE = 0.1;
         double targetRatio = (double) h / w;
         if (sizes == null) return null;
         Camera.Size optimalSize = null;
@@ -126,11 +108,11 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
 
 
     private void setCameraView() {
-
         connectHolder();
 //        createOrientationListener();
     }
-    private  void initCameraView() {
+
+    private void initCameraView() {
         if (mCamera != null) {
             releaseCamera();
         }
@@ -143,6 +125,7 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
         }
 //        setBarcodeScanner();
     }
+
     private void setCameraRotation(int rotation, boolean force) {
         if (mCamera == null) return;
         int supportedRotation = getSupportedRotation(rotation);
@@ -153,10 +136,23 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
         Camera.Parameters parameters = mCamera.getParameters();
         parameters.setRotation(supportedRotation);
         parameters.setPictureFormat(JPEG);
+        parameters.setFlashMode(getFlashMode());
         mCamera.setDisplayOrientation(Orientation.getDeviceOrientation(activity));
         mCamera.setParameters(parameters);
     }
 
+    private String getFlashMode() {
+        switch (previewFlashMode) {
+            case 'A':
+                return FLASH_MODE_AUTO;
+            case 'O':
+                return FLASH_MODE_ON;
+            case 'F':
+                return FLASH_MODE_OFF;
+            default:
+                return FLASH_MODE_OFF;
+        }
+    }
 
 
     private void releaseCamera() {
@@ -164,7 +160,7 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
         mCamera.release();
     }
 
-    private  void connectHolder() {
+    private void connectHolder() {
 
         new Thread(new Runnable() {
             @Override
@@ -178,12 +174,13 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
                     @Override
                     public void run() {
                         try {
+
                             mCamera.stopPreview();
                             mCamera.setPreviewDisplay(surfaceView.getHolder());
                             mCamera.startPreview();
-                            if (hasBarcodeReader) {
-//                                getOptimalPreviewSize().setOneShotPreviewCallback(null);
-                            }
+//                            if (hasBarcodeReader) {
+////                                getOptimalPreviewSize().setOneShotPreviewCallback(null);
+//                            }
 //                            cameraViews.peek().setSurfaceBgColor(Color.TRANSPARENT);
 //                            cameraViews.peek().showFrame();
                         } catch (IOException | RuntimeException e) {
@@ -201,12 +198,17 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
 
     }
 
+
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        setCameraView();
+        // Set focus mode to continuous picture
+        if(mCamera!= null) {
+
+            mCamera.startPreview();
+        }
     }
 
-    private  void updateCameraSize() {
+    private void updateCameraSize() {
         try {
 
 
@@ -219,11 +221,11 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
             List<Camera.Size> supportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             List<Camera.Size> supportedPictureSizes = mCamera.getParameters().getSupportedPictureSizes();
             Camera.Size optimalSize = getOptimalPreviewSize(supportedPreviewSizes, linearLayout.getWidth(), y);
-            Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, linearLayout.getHeight(), y);
+//            Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, linearLayout.getWidth(), y);
             Camera.Parameters parameters = mCamera.getParameters();
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             parameters.setPreviewSize(optimalSize.width, optimalSize.height);
-            parameters.setPictureSize(optimalPictureSize.width, optimalPictureSize.height);
+            parameters.setPictureSize(optimalSize.width, optimalSize.height);
 //            parameters.setFlashMode(flashMode);
             mCamera.setParameters(parameters);
         } catch (RuntimeException ignored) {
@@ -235,24 +237,70 @@ public class CameraView1 implements PlatformView, SurfaceHolder.Callback {
     public void surfaceDestroyed(SurfaceHolder holder) {
 
     }
-
+    @Override
     public void resumeCamera() {
+        connectHolder();
+    }
+
+    @Override
+    public void dispose() {
 
     }
 
     public void pauseCamera() {
-
+        releaseCamera();
+        mCamera = null;
     }
 
-    public void takePicture(MethodChannel.Result result, char captureFlashMode) {
+    private static Bitmap rotate(Bitmap bitmap, int degree) {
+        int w = bitmap.getWidth();
+        int h = bitmap.getHeight();
 
+        Matrix mtx = new Matrix();
+        //       mtx.postRotate(degree);
+        mtx.setRotate(degree);
+
+        return Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
     }
+    @Override
+    public void takePicture(final MethodChannel.Result result) {
 
+        mCamera.takePicture(null, null, new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+                File pictureFile = new File(activity.getCacheDir(), "pic.jpg");
+                try {
+
+                    Bitmap realImage = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    FileOutputStream fos = new FileOutputStream(pictureFile);
+
+                    realImage= rotate(realImage, Orientation.getDeviceOrientation(activity));
+                    realImage.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+                    fos.close();
+                    flutterMethodListener.onTakePicture(result, pictureFile + "");
+                } catch (FileNotFoundException e) {
+                    flutterMethodListener.onTakePictureFailed(result, "-101", "File not found");
+                    // Log.d(TAG, "File not found: " + e.getMessage());
+                } catch (IOException e) {
+                    flutterMethodListener.onTakePictureFailed(result, "-102", e.getMessage());
+                    //Log.d(TAG, "Error accessing file: " + e.getMessage());
+                }
+            }
+        });
+    }
+    @Override
     public void changeFlashMode(char captureFlashMode) {
-
+        previewFlashMode = captureFlashMode;
+        Camera.Parameters parameters = mCamera.getParameters();
+        parameters.setFlashMode(getFlashMode());
+        mCamera.setParameters(parameters);
     }
-
+    @Override
     public void setCameraVisible(boolean isCameraVisible) {
-
+        if (isCameraVisible != this.isCameraVisible) {
+            if (isCameraVisible) resumeCamera();
+            else pauseCamera();
+            this.isCameraVisible = isCameraVisible;
+        }
     }
 }

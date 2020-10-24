@@ -65,14 +65,15 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               Expanded(
                   child: CameraKitView(
-                hasBarcodeReader: true,
+                hasBarcodeReader: false,
                 barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS,
                 scaleType: ScaleTypeMode.fill,
                 onBarcodeRead: (barcode) {
                   print("Flutter read barcode: " + barcode);
                 },
-                previewFlashMode: CameraFlashMode.auto,
+                previewFlashMode: CameraFlashMode.on,
                 cameraKitController: cameraKitController,
+                useCamera2API: true,
               )),
 //              Container(height: 250),
               Row(
@@ -90,9 +91,8 @@ class _MyAppState extends State<MyApp> {
                   RaisedButton(
                     child: Text("Capture"),
                     onPressed: () {
-                      cameraKitController
-                          .takePicture()
-                          .then((value) => print(value));
+                      cameraKitController.takePicture().then((value) =>
+                          print("flutter take pictre result: " + value));
                     },
                   ),
                   RaisedButton(

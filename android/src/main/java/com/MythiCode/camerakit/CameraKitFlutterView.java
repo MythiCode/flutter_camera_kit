@@ -23,7 +23,7 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
     private static final int REQUEST_CAMERA_PERMISSION = 10001;
     private final MethodChannel channel;
     private final ActivityPluginBinding activityPluginBinding;
-    private CameraView2 cameraView;
+    private CameraBaseView cameraView;
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull final MethodChannel.Result result) {
@@ -57,7 +57,8 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
             char flashMode = call.argument("flashMode").toString().charAt(0);
             boolean isFillScale = call.argument("isFillScale");
             int barcodeMode = call.argument("barcodeMode");
-            getCameraView().initCamera(hasBarcodeReader, flashMode, isFillScale, barcodeMode);
+            boolean useCamera2API = call.argument("useCamera2API");
+            getCameraView().initCamera(hasBarcodeReader, flashMode, isFillScale, barcodeMode, useCamera2API);
         } else if (call.method.equals("resumeCamera")) {
             getCameraView().resumeCamera();
 
@@ -78,7 +79,7 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
         }
     }
 
-    private CameraView2 getCameraView() {
+    private CameraBaseView getCameraView() {
         return cameraView;
     }
 
@@ -89,19 +90,19 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
 
         this.channel.setMethodCallHandler(this);
         if (getCameraView() == null) {
-            cameraView = new CameraView2(activityPluginBinding.getActivity(), this);
+            cameraView = new CameraBaseView(activityPluginBinding.getActivity(), this);
         }
     }
 
     @Override
     public View getView() {
-        return cameraView.getView();
+        return getCameraView().getView();
     }
 
     @Override
     public void dispose() {
-        if (cameraView != null) {
-            cameraView.dispose();
+        if (getCameraView() != null) {
+            getCameraView().dispose();
         }
     }
 

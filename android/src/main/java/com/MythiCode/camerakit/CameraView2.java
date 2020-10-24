@@ -66,7 +66,7 @@ import static android.content.ContentValues.TAG;
 import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT_ALL_FORMATS;
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableListener {
+public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvailableListener {
 
     private static final int MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT = 100;
     private FirebaseVisionBarcodeDetector detector;
@@ -301,24 +301,18 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private CaptureRequest mainPreviewRequest;
     private TakePictureImageListener takePictureImageListener;
     private Point displaySize;
+    private boolean isReadyForTakingPicture = false;
 
 
     public CameraView2(Activity activity, FlutterMethodListener flutterMethodListener) {
         FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
-        if (linearLayout == null) {
-            linearLayout = new LinearLayout(activity);
-            linearLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT));
-
-            linearLayout.setBackgroundColor(Color.parseColor("#000000"));
-            startBackgroundThread();
-        }
     }
 
-    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
+    public void initCamera(LinearLayout linearLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
+        startBackgroundThread();
+        this.linearLayout = linearLayout;
         this.hasBarcodeReader = hasBarcodeReader;
         this.previewFlashMode = flashMode;
 
@@ -491,7 +485,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             // Add permission for camera and let user grant the permission
             try {
                 if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
-                    throw new RuntimeException("Time out waiting to lock camera opening.");
+                    //throw new RuntimeException("Time out waiting to lock camera opening.");
                 }
                 manager.openCamera(cameraId, stateCallback, null);
             } catch (InterruptedException e) {
@@ -712,8 +706,10 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             mainPreviewRequest = captureRequestBuilder.build();
             if (hasBarcodeReader)
                 cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackBarcodeReader, backgroundHandler);
-            else
+            else {
                 cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackTakePicture, backgroundHandler);
+                isReadyForTakingPicture = true;
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -815,12 +811,6 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     }
 
 
-    @Override
-    public View getView() {
-        return linearLayout;
-    }
-
-    @Override
     public void dispose() {
         closeCamera();
         stopBackgroundThread();
@@ -852,7 +842,10 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         System.out.println("barcode read failed: " + e.getMessage());
                     }
                 });
-            } catch (OutOfMemoryError e) {
+            }catch (IllegalStateException e) {
+
+            }
+            catch (OutOfMemoryError e) {
                 System.gc();
                 //Sometimes out of memory error occurred, ignore it
             } finally {
@@ -884,12 +877,14 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
 
     public void takePicture(final MethodChannel.Result resultMethodChannel) {
-        this.resultMethodChannel = resultMethodChannel;
-        if (checkAutoFocusSupported()) {
-            capturePictureWhenFocusTimeout();
-            lockFocus();
-        } else {
-            captureStillPicture();
+        if(isReadyForTakingPicture) {
+            this.resultMethodChannel = resultMethodChannel;
+            if (checkAutoFocusSupported()) {
+                capturePictureWhenFocusTimeout();
+                lockFocus();
+            } else {
+                captureStillPicture();
+            }
         }
     }
 

@@ -54,7 +54,13 @@ class CameraKitView extends StatefulWidget {
   ///Controller for this widget
   final CameraKitController cameraKitController;
 
+  ///For fixing problem with flash In old phones like Samsung S6, switch between CameraAPI and Camera2 API. Set this parameter false
+  ///Barcode scanning not support from this. Default value is true.
+  final bool useCamera2API;
+
   _BarcodeScannerViewState viewState;
+
+
 
   CameraKitView(
       {Key key,
@@ -64,7 +70,8 @@ class CameraKitView extends StatefulWidget {
       this.barcodeFormat = BarcodeFormats.FORMAT_ALL_FORMATS,
       this.previewFlashMode = CameraFlashMode.auto,
       this.cameraKitController,
-      this.onPermissionDenied})
+      this.onPermissionDenied,
+      this.useCamera2API = true})
       : super(key: key);
 
   dispose() {
@@ -92,7 +99,7 @@ class _BarcodeScannerViewState extends State<CameraKitView>
       visibilityDetector = VisibilityDetector(
           key: Key('visible-camerakit-key-1'),
           onVisibilityChanged: (visibilityInfo) {
-            if(controller != null) {
+            if (controller != null) {
               if (visibilityInfo.visibleFraction == 0)
                 controller.setCameraVisible(false);
               else
@@ -209,12 +216,22 @@ class NativeCameraKitController {
     _channel.setMethodCallHandler(nativeMethodCallHandler);
     _channel.invokeMethod('requestPermission').then((value) {
       if (value) {
-        _channel.invokeMethod('initCamera', {
-          "hasBarcodeReader": widget.hasBarcodeReader,
-          "flashMode": _getCharFlashMode(widget.previewFlashMode),
-          "isFillScale": _getScaleTypeMode(widget.scaleType),
-          "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat)
-        });
+        if (Platform.isAndroid) {
+          _channel.invokeMethod('initCamera', {
+            "hasBarcodeReader": widget.hasBarcodeReader,
+            "flashMode": _getCharFlashMode(widget.previewFlashMode),
+            "isFillScale": _getScaleTypeMode(widget.scaleType),
+            "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat),
+            "useCamera2API": widget.useCamera2API
+          });
+        } else {
+          _channel.invokeMethod('initCamera', {
+            "hasBarcodeReader": widget.hasBarcodeReader,
+            "flashMode": _getCharFlashMode(widget.previewFlashMode),
+            "isFillScale": _getScaleTypeMode(widget.scaleType),
+            "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat)
+          });
+        }
       } else {
         widget.onPermissionDenied();
       }
@@ -259,8 +276,8 @@ class NativeCameraKitController {
         .invokeMethod('setCameraVisible', {"isCameraVisible": isCameraVisible});
   }
 
-  int _getBarcodeModeValue(BarcodeFormats barcodeMode)  {
-    switch(barcodeMode) {
+  int _getBarcodeModeValue(BarcodeFormats barcodeMode) {
+    switch (barcodeMode) {
       case BarcodeFormats.FORMAT_ALL_FORMATS:
         return 0;
       case BarcodeFormats.FORMAT_CODE_128:
@@ -290,8 +307,8 @@ class NativeCameraKitController {
       case BarcodeFormats.FORMAT_AZTEC:
         return 4096;
 
-      default: return 0;
-
+      default:
+        return 0;
     }
   }
 }

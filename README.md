@@ -33,7 +33,8 @@ For use plugin, You shoude an instance of `CameraKitController` then initial `Ca
       hasBarcodeReader: true,
       barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS
       scaleType: ScaleTypeMode.fill,
-      previewFlashMode: CameraFlashMode.auto
+      previewFlashMode: CameraFlashMode.auto,
+      useCamera2API: true,
       onPermissionDenied: () {
           print("Camera permission is denied.");
           //ToDo on permission denied by user
@@ -56,6 +57,8 @@ If you want camera preview fill your widget area, use `fill` mode. In this mode,
 If you want camera preview to show entire lens preview, use `fit` mode. In this mode, camera preview may be shows blank areas.
 `previewFlashMode`:
 This parameter accepts 3 values. `CameraFlashMode.auto`, `CameraFlashMode.on` and `CameraFlashMode.off`. For changing value after initial use `changeFlashMode` method in controller.
+`useCamera2API`:
+For fixing problem with flash In old phones like Samsung S6, switch between CameraAPI and Camera2 API. Set this parameter false Barcode scanning not support from this. Default value is true.
 `onPermissionDenied`:
 After android and iOS user deny run time permission, this method is called.
 `onBarcodeRead`:
@@ -80,5 +83,6 @@ This plugin automatically manage pause and resume camera based on android, iOS l
 ```
  # Notes
  This project is teset on iPhone6, samsung galaxy S7, samsung J7, samsung note 10, samsung s10, iPhone pro max.
- Auto flash for capture has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
+ Auto flash for capture (CameraAPI 2) has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
+ For these phones set `useCamera2API` false
  Auto flash for camera preview (scanning barcode mode) dosen't work for samsung J7
