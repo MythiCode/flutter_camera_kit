@@ -66,7 +66,6 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.platform.PlatformView;
 
 import static android.content.ContentValues.TAG;
-import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT_ALL_FORMATS;
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableListener {
@@ -309,12 +308,12 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     private TakePictureImageListener takePictureImageListener;
     private Point displaySize;
     private File filePicture;
-    private boolean mIsRecordingVideo;
+    private boolean isRecordingVideo;
     private MeteringRectangle[] mAFRegions;
     private MeteringRectangle[] mAERegions;
-    private boolean mAutoFocusSupported;
-    private MediaRecorder mMediaRecorder;
-    private Size mVideoSize;
+    private boolean autoFocusSupported;
+    private MediaRecorder mediaRecorder;
+    private Size videoSize;
     private String videoFilePath;
 
 
@@ -445,7 +444,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
                         maxPreviewHeight, largest);
 
-                mVideoSize = chooseVideoSize(map.getOutputSizes(MediaRecorder.class));
+                videoSize = chooseVideoSize(map.getOutputSizes(MediaRecorder.class));
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 int orientation = activity.getResources().getConfiguration().orientation;
@@ -709,17 +708,17 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     private void setAutoFocusSupported() {
         int[] modes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
-        mAutoFocusSupported = !(modes == null || modes.length == 0 ||
+        autoFocusSupported = !(modes == null || modes.length == 0 ||
                 (modes.length == 1 && modes[0] == CameraCharacteristics.CONTROL_AF_MODE_OFF));
     }
 
     void updateAutoFocus() {
         if (true  /*mAutoFocus*/) {
-            if (!mAutoFocusSupported) {
+            if (!autoFocusSupported) {
                 captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                         CaptureRequest.CONTROL_AF_MODE_OFF);
             } else {
-                if (mIsRecordingVideo) {
+                if (isRecordingVideo) {
                     captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                             CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
                 } else {
@@ -750,7 +749,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                     break;
                 case 'O':
                     if (!hasBarcodeReader) {
-                        if(!mIsRecordingVideo) {
+                        if(!isRecordingVideo) {
                             previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
                                     CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
                             previewRequestBuilder.set(CaptureRequest.FLASH_MODE,
@@ -952,7 +951,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     public void takePicture(final MethodChannel.Result resultMethodChannel) {
         this.resultMethodChannel = resultMethodChannel;
-        if (mAutoFocusSupported) {
+        if (autoFocusSupported) {
             capturePictureWhenFocusTimeout();
             lockFocus();
         } else {
@@ -1074,44 +1073,44 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
 
     private void setupMediaRecorder(String filePath) throws IOException {
 
-        mMediaRecorder = new MediaRecorder();
-        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         if (filePath.equals(""))
             filePath = activity.getCacheDir() + "/video.mp4";
 //        final File dir = activity.getExternalFilesDir(null);
 //        filePath = (dir == null ? "" : (dir.getAbsolutePath() + "/"))
 //                + "SystemcurrentTimeMillis2" + ".mp4";
         videoFilePath = filePath;
-        mMediaRecorder.setOutputFile(filePath);
-        mMediaRecorder.setVideoEncodingBitRate(10000000);
-        mMediaRecorder.setVideoFrameRate(30);
+        mediaRecorder.setOutputFile(filePath);
+        mediaRecorder.setVideoEncodingBitRate(10000000);
+        mediaRecorder.setVideoFrameRate(30);
 
-        mMediaRecorder.setVideoSize(mVideoSize.getWidth(), mVideoSize.getHeight());
-        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setVideoSize(videoSize.getWidth(), videoSize.getHeight());
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 
         int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
         switch (sensorOrientation) {
             case 90:
-                mMediaRecorder.setOrientationHint(ORIENTATIONS.get(rotation));
+                mediaRecorder.setOrientationHint(ORIENTATIONS.get(rotation));
                 break;
             case 270:
-                mMediaRecorder.setOrientationHint(INVERSE_ORIENTATIONS.get(rotation));
+                mediaRecorder.setOrientationHint(INVERSE_ORIENTATIONS.get(rotation));
                 break;
         }
-        mMediaRecorder.prepare();
+        mediaRecorder.prepare();
     }
 
 
     public void stopVideoRecord(MethodChannel.Result result) {
-        mIsRecordingVideo = false;
-        if (null != mMediaRecorder) {
-            mMediaRecorder.stop();
-            mMediaRecorder.reset();
-            mMediaRecorder.release();
-            mMediaRecorder = null;
+        isRecordingVideo = false;
+        if (null != mediaRecorder) {
+            mediaRecorder.stop();
+            mediaRecorder.reset();
+            mediaRecorder.release();
+            mediaRecorder = null;
         }
         //showToast("Video saved: " + videoFilePath);
         result.success(videoFilePath);
@@ -1124,14 +1123,14 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
     }
 
     public void startVideoRecord(String filePath) {
-        if(mIsRecordingVideo == true)
+        if(isRecordingVideo == true)
             return;
         if (null == cameraDevice || !textureView.isAvailable() || null == previewSize) {
             return;
         }
         try {
 
-            mIsRecordingVideo = true;
+            isRecordingVideo = true;
             setupMediaRecorder(filePath);
             SurfaceTexture texture = textureView.getSurfaceTexture();
             assert texture != null;
@@ -1145,7 +1144,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
             captureRequestBuilder.addTarget(previewSurface);
 
             // Set up Surface for the MediaRecorder
-            Surface recorderSurface = mMediaRecorder.getSurface();
+            Surface recorderSurface = mediaRecorder.getSurface();
             surfaces.add(recorderSurface);
             captureRequestBuilder.addTarget(recorderSurface);
 
@@ -1180,7 +1179,7 @@ public class CameraView2 implements PlatformView, ImageReader.OnImageAvailableLi
                             @Override
                             public void run() {
                                 // Start recording
-                                mMediaRecorder.start();
+                                mediaRecorder.start();
                             }
                         });
                     } catch (CameraAccessException e) {

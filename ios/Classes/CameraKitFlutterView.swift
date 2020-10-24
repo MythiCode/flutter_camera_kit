@@ -13,11 +13,12 @@ import MLKitVision
 
 
 @available(iOS 10.0, *)
-class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate{
+class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate, AVCaptureFileOutputRecordingDelegate{
     let channel: FlutterMethodChannel
     let frame: CGRect
 
     var hasBarcodeReader:Bool!
+    var hasVideoRecord:Bool!
     var isCameraVisible:Bool! = true
     var initCameraFinished:Bool! = false
     var isFillScale:Bool!
@@ -28,6 +29,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
     var videoDataOutputQueue: DispatchQueue!
     
     var photoOutput: AVCapturePhotoOutput?
+    var videoRecordOutput:AVCaptureMovieFileOutput?
     var previewLayer:AVCaptureVideoPreviewLayer!
     var captureDevice : AVCaptureDevice!
     let session = AVCaptureSession()
@@ -67,6 +69,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                 let args = FlutterMethodCall.arguments
                 let myArgs = args as? [String: Any]
                 if FlutterMethodCall.method == "requestPermission" {
+                    self.hasVideoRecord = myArgs?["hasVideoRecord"] as! Bool
                     self.requestPermission(flutterResult: FlutterResult)
                 } else if FlutterMethodCall.method == "initCamera" {
                     self.initCameraFinished = false
@@ -220,6 +223,11 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                  }
                 videoDataOutput.connection(with: .video)?.isEnabled = true
 
+            } else if(hasVideoRecord) {
+                self.videoRecordOutput = AVCaptureMovieFileOutput()
+                      if session.canAddOutput(self.videoRecordOutput!) {
+                          session.addOutput(self.videoRecordOutput!)
+                      }
             }
             else {
                 photoOutput = AVCapturePhotoOutput()
@@ -337,6 +345,27 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
         settings.flashMode = self.flashMode
         photoOutput?.capturePhoto(with: settings, delegate:self)
     }
+    
+    
+    func startVideoRecord() {
+     
+          let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+          let fileUrl = paths[0].appendingPathComponent("output.mp4")
+          try? FileManager.default.removeItem(at: fileUrl)
+          videoRecordOutput!.startRecording(to: fileUrl, recordingDelegate: self)
+    }
+    
+    func stopVideoRecord() {
+         self.videoRecordOutput?.stopRecording()
+    }
+    
+    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+            if error == nil {
+              //do something
+            } else {
+               //do something
+            }
+       }
     
     public func photoOutput(_ captureOutput: AVCapturePhotoOutput, didFinishProcessingPhoto photoSampleBuffer: CMSampleBuffer?, previewPhoto previewPhotoSampleBuffer: CMSampleBuffer?,
                         resolvedSettings: AVCaptureResolvedPhotoSettings, bracketSettings: AVCaptureBracketedStillImageSettings?, error: Swift.Error?) {
