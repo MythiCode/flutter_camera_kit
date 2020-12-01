@@ -6,8 +6,6 @@ import android.os.Build;
 import android.view.View;
 import android.widget.LinearLayout;
 
-import com.google.firebase.FirebaseApp;
-
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.platform.PlatformView;
 
@@ -20,7 +18,6 @@ public class CameraBaseView implements PlatformView {
     private CameraViewInterface cameraViewInterface;
 
     public CameraBaseView(Activity activity, FlutterMethodListener flutterMethodListener) {
-        FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
         linearLayout = new LinearLayout(activity);
@@ -32,6 +29,9 @@ public class CameraBaseView implements PlatformView {
     }
 
     public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, boolean useCamera2API) {
+        if(hasBarcodeReader && !useCamera2API){
+            throw new RuntimeException("You cannot use barcode reader for reading barcode");
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (useCamera2API)
                 cameraViewInterface = new CameraView2(activity, flutterMethodListener);
@@ -43,7 +43,8 @@ public class CameraBaseView implements PlatformView {
     }
 
     public void setCameraVisible(boolean isCameraVisible) {
-        cameraViewInterface.setCameraVisible(isCameraVisible);
+        if (cameraViewInterface != null)
+            cameraViewInterface.setCameraVisible(isCameraVisible);
     }
 
     public void changeFlashMode(char captureFlashMode) {

@@ -7,7 +7,7 @@ class CameraKitController {
   ///pause camera while stop camera preview.
   ///Plugin manage automatically pause camera based android, iOS lifecycle and widget visibility
   pauseCamera() {
-    cameraKitView.viewState.controller.pauseCamera();
+    cameraKitView.viewState.controller.setCameraVisible(false);
   }
 
   ///Closing camera and dispose all resource
@@ -18,7 +18,7 @@ class CameraKitController {
   ///resume camera while resume camera preview.
   ///Plugin manage automatically resume camera based android, iOS lifecycle and widget visibility
   resumeCamera() {
-    cameraKitView.viewState.controller.resumeCamera();
+    cameraKitView.viewState.controller.setCameraVisible(true);
   }
 
   ///Use this method for taking picture in take picture mode

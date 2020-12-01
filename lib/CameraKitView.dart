@@ -60,8 +60,6 @@ class CameraKitView extends StatefulWidget {
 
   _BarcodeScannerViewState viewState;
 
-
-
   CameraKitView(
       {Key key,
       this.hasBarcodeReader = false,

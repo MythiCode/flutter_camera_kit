@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> {
                 },
                 previewFlashMode: CameraFlashMode.on,
                 cameraKitController: cameraKitController,
-                useCamera2API: true,
+                useCamera2API: false,
               )),
 //              Container(height: 250),
               Row(

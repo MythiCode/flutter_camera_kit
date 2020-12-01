@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.hardware.Camera;
@@ -12,12 +11,9 @@ import android.media.ExifInterface;
 import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
-
-import com.google.firebase.FirebaseApp;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -26,7 +22,6 @@ import java.io.IOException;
 import java.util.List;
 
 import io.flutter.plugin.common.MethodChannel;
-import io.flutter.plugin.platform.PlatformView;
 
 import static android.graphics.PixelFormat.JPEG;
 import static android.hardware.Camera.Parameters.FLASH_MODE_AUTO;
@@ -49,12 +44,11 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     private SurfaceView surfaceView;
     int currentRotation = 0;
     private boolean isCameraVisible = true;
+    private Camera.Size optimalSize;
 
     public CameraView1(Activity activity, FlutterMethodListener flutterMethodListener) {
-        FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
-
 
 
     }
@@ -76,8 +70,6 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     public static int convertDeviceHeightToSupportedAspectRatio(float actualWidth, float actualHeight) {
         return (int) (actualHeight / actualWidth > MAX_SCREEN_RATIO ? actualWidth * MAX_SCREEN_RATIO : actualHeight);
     }
-
-
 
 
     private static Camera.Size getOptimalPreviewSize(List<Camera.Size> sizes, int w, int h) {
@@ -128,17 +120,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
 
     private void setCameraRotation(int rotation, boolean force) {
         if (mCamera == null) return;
-        int supportedRotation = getSupportedRotation(rotation);
-        if (supportedRotation == currentRotation && !force) return;
-        currentRotation = supportedRotation;
 
-//        if (cameraReleased.get()) return;
-        Camera.Parameters parameters = mCamera.getParameters();
-        parameters.setRotation(supportedRotation);
-        parameters.setPictureFormat(JPEG);
-        parameters.setFlashMode(getFlashMode());
-        mCamera.setDisplayOrientation(Orientation.getDeviceOrientation(activity));
-        mCamera.setParameters(parameters);
     }
 
     private String getFlashMode() {
@@ -202,7 +184,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         // Set focus mode to continuous picture
-        if(mCamera!= null) {
+        if (mCamera != null) {
 
             mCamera.startPreview();
         }
@@ -216,19 +198,26 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
             Display display = wm.getDefaultDisplay();
             Point size = new Point();
             display.getSize(size);
-            int y = convertDeviceHeightToSupportedAspectRatio(linearLayout.getWidth(), linearLayout.getHeight());
+            final int y = convertDeviceHeightToSupportedAspectRatio(linearLayout.getWidth(), linearLayout.getHeight());
             if (mCamera == null) return;
             List<Camera.Size> supportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             List<Camera.Size> supportedPictureSizes = mCamera.getParameters().getSupportedPictureSizes();
-            Camera.Size optimalSize = getOptimalPreviewSize(supportedPreviewSizes, linearLayout.getWidth(), y);
-//            Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, linearLayout.getWidth(), y);
+            optimalSize = getOptimalPreviewSize(supportedPreviewSizes, linearLayout.getWidth(), y);
+            final Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, linearLayout.getWidth(), y);
             Camera.Parameters parameters = mCamera.getParameters();
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             parameters.setPreviewSize(optimalSize.width, optimalSize.height);
             parameters.setPictureSize(optimalSize.width, optimalSize.height);
-//            parameters.setFlashMode(flashMode);
+            currentRotation= getSupportedRotation(0);
+            parameters.setPictureFormat(JPEG);
+            parameters.setFlashMode(getFlashMode());
+            mCamera.setDisplayOrientation(Orientation.getDeviceOrientation(activity));
+            mCamera.setParameters(parameters);
+
+
             mCamera.setParameters(parameters);
         } catch (RuntimeException ignored) {
+
         }
     }
 
@@ -237,9 +226,10 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     public void surfaceDestroyed(SurfaceHolder holder) {
 
     }
+
     @Override
     public void resumeCamera() {
-        connectHolder();
+        if(isCameraVisible) connectHolder();
     }
 
     @Override
@@ -262,6 +252,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
 
         return Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
     }
+
     @Override
     public void takePicture(final MethodChannel.Result result) {
 
@@ -271,13 +262,27 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
                 File pictureFile = new File(activity.getCacheDir(), "pic.jpg");
                 try {
 
-                    Bitmap realImage = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    if(pictureFile.exists())
+                        pictureFile.delete();
+
                     FileOutputStream fos = new FileOutputStream(pictureFile);
 
-                    realImage= rotate(realImage, Orientation.getDeviceOrientation(activity));
+                    Bitmap realImage = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    realImage = rotate(realImage, currentRotation);
+                    if (optimalSize.width < optimalSize.height) {
+                        if (realImage.getWidth() != optimalSize.width || realImage.getHeight() != optimalSize.height)
+                            realImage = Bitmap.createScaledBitmap(realImage, optimalSize.width, optimalSize.height, false);
+                    } else {
+                        if (realImage.getWidth() != optimalSize.height || realImage.getHeight() != optimalSize.width)
+                            realImage = Bitmap.createScaledBitmap(realImage, optimalSize.height, optimalSize.width, false);
+
+                    }
+
                     realImage.compress(Bitmap.CompressFormat.JPEG, 100, fos);
                     fos.close();
+
                     flutterMethodListener.onTakePicture(result, pictureFile + "");
+                    mCamera.startPreview();
                 } catch (FileNotFoundException e) {
                     flutterMethodListener.onTakePictureFailed(result, "-101", "File not found");
                     // Log.d(TAG, "File not found: " + e.getMessage());
@@ -288,6 +293,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
             }
         });
     }
+
     @Override
     public void changeFlashMode(char captureFlashMode) {
         previewFlashMode = captureFlashMode;
@@ -295,12 +301,14 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
         parameters.setFlashMode(getFlashMode());
         mCamera.setParameters(parameters);
     }
+
     @Override
     public void setCameraVisible(boolean isCameraVisible) {
         if (isCameraVisible != this.isCameraVisible) {
+            this.isCameraVisible = isCameraVisible;
             if (isCameraVisible) resumeCamera();
             else pauseCamera();
-            this.isCameraVisible = isCameraVisible;
+
         }
     }
 }

@@ -3,7 +3,6 @@ package com.MythiCode.camerakit;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -31,7 +30,6 @@ import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -40,17 +38,18 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.ml.vision.FirebaseVision;
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode;
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetector;
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions;
-import com.google.firebase.ml.vision.common.FirebaseVisionImage;
-import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.vision.barcode.Barcode;
+import com.google.mlkit.vision.barcode.BarcodeScanner;
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
+import com.google.mlkit.vision.barcode.BarcodeScanning;
+import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,17 +59,15 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import io.flutter.plugin.common.MethodChannel;
-import io.flutter.plugin.platform.PlatformView;
 
 import static android.content.ContentValues.TAG;
-import static com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.FORMAT_ALL_FORMATS;
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvailableListener {
 
     private static final int MSG_CAPTURE_PICTURE_WHEN_FOCUS_TIMEOUT = 100;
-    private FirebaseVisionBarcodeDetector detector;
-    private FirebaseVisionBarcodeDetectorOptions options;
+
+    private BarcodeScannerOptions options;
     private int mState = STATE_PREVIEW;
     private Activity activity;
     private Semaphore cameraOpenCloseLock = new Semaphore(1);
@@ -302,10 +299,11 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private TakePictureImageListener takePictureImageListener;
     private Point displaySize;
     private boolean isReadyForTakingPicture = false;
+    private BarcodeScanner scanner;
 
 
     public CameraView2(Activity activity, FlutterMethodListener flutterMethodListener) {
-        FirebaseApp.initializeApp(activity);
+//        FirebaseApp.initializeApp(activity);
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
     }
@@ -316,13 +314,14 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         this.hasBarcodeReader = hasBarcodeReader;
         this.previewFlashMode = flashMode;
 
-        if(hasBarcodeReader) {
-            options = new FirebaseVisionBarcodeDetectorOptions.Builder()
+        if (hasBarcodeReader) {
+
+            options = new BarcodeScannerOptions.Builder()
                     .setBarcodeFormats(
                             barcodeMode
                     )
                     .build();
-            detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options);
+            scanner = BarcodeScanning.getClient(options);
         }
         displaySize = new Point();
         activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
@@ -548,12 +547,18 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         // a camera and start preview from here (otherwise, we wait until the surface is ready in
         // the SurfaceTextureListener).
 //        textureView.setVisibility(View.VISIBLE);
-        if (textureView != null) {
-            if (textureView.isAvailable()) {
-                isDestroy = false;
-                openCamera();
-            } else {
-                textureView.setSurfaceTextureListener(textureListener);
+        if(isCameraVisible) {
+            if (textureView != null) {
+                if (textureView.isAvailable()) {
+                    isDestroy = false;
+                    openCamera();
+                } else {
+                    textureView.setSurfaceTextureListener(textureListener);
+                }
+            }
+
+            if (scanner == null && hasBarcodeReader) {
+                scanner = BarcodeScanning.getClient(options);
             }
         }
     }
@@ -567,28 +572,38 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
     private void closeCamera() {
         try {
-//            System.out.println("Close Camera");
             cameraOpenCloseLock.acquire();
-            if (null != cameraCaptureSessions) {
-                cameraCaptureSessions.close();
-                cameraCaptureSessions = null;
-            }
-            if (null != cameraDevice) {
-                cameraDevice.close();
-                cameraDevice = null;
-            }
-            if (null != imageReader) {
-                imageReader.close();
-                imageReader = null;
-            }
-            if(null != readerCapture) {
-                readerCapture.close();
-                readerCapture = null;
-            }
         } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to lock camera closing.", e);
+            System.out.println("Interrupted while trying to lock camera closing: " + e.getMessage());
         } finally {
             cameraOpenCloseLock.release();
+        }
+
+        if (null != cameraCaptureSessions) {
+            cameraCaptureSessions.close();
+            cameraCaptureSessions = null;
+        }
+        if (null != cameraDevice) {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+        if (null != imageReader) {
+            imageReader.close();
+            BarcodeDetector.setImageReader(null);
+            imageReader = null;
+        }
+        if (null != readerCapture) {
+            readerCapture.close();
+            readerCapture = null;
+        }
+        try {
+            if(scanner != null) {
+                scanner.close();
+                scanner = null;
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error to closing detector: " + e.getMessage());
         }
     }
 
@@ -648,10 +663,10 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
     public void setCameraVisible(boolean isCameraVisible) {
         if (isCameraVisible != this.isCameraVisible) {
+            this.isCameraVisible = isCameraVisible;
             if (isCameraVisible) resumeCamera();
             else pauseCamera();
-            this.isCameraVisible = isCameraVisible;
-        }
+        }Barcode.ALL_FORMATS
     }
 
 
@@ -771,42 +786,44 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         else return Arrays.asList(surface, readerCapture.getSurface());
     }
 
-    private int getFirebaseOrientation() {
-        int rotationCompensation = getOrientation();
-
-        // Return the corresponding FirebaseVisionImageMetadata rotation value.
-        int result;
-        switch (rotationCompensation) {
-            case 0:
-                result = FirebaseVisionImageMetadata.ROTATION_0;
-                break;
-            case 90:
-                result = FirebaseVisionImageMetadata.ROTATION_90;
-                break;
-            case 180:
-                result = FirebaseVisionImageMetadata.ROTATION_180;
-                break;
-            case 270:
-                result = FirebaseVisionImageMetadata.ROTATION_270;
-                break;
-            default:
-                result = FirebaseVisionImageMetadata.ROTATION_0;
-                Log.e(TAG, "Bad rotation value: " + rotationCompensation);
-        }
-        return result;
-    }
+//    private int getFirebaseOrientation() {
+//        int rotationCompensation = getOrientation();
+//
+//        // Return the corresponding FirebaseVisionImageMetadata rotation value.
+//        int result;
+//        switch (rotationCompensation) {
+//            case 0:
+//                result = FirebaseVisionImageMetadata.ROTATION_0;
+//                break;
+//            case 90:
+//                result = FirebaseVisionImageMetadata.ROTATION_90;
+//                break;
+//            case 180:
+//                result = FirebaseVisionImageMetadata.ROTATION_180;
+//                break;
+//            case 270:
+//                result = FirebaseVisionImageMetadata.ROTATION_270;
+//                break;
+//            default:
+//                result = FirebaseVisionImageMetadata.ROTATION_0;
+//                Log.e(TAG, "Bad rotation value: " + rotationCompensation);
+//        }
+//        return result;
+//    }
 
     private void initialImageReader() {
         if (hasBarcodeReader) {
 //            Size m = Collections.max(
 //                    Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
 //                    new CompareSizesByArea());
-            firebaseOrientation = getFirebaseOrientation();
+            firebaseOrientation = getJpegOrientation();
             imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(),
                     ImageFormat.YUV_420_888, 2);
             imageReader.setOnImageAvailableListener(
                     this, backgroundHandler2);
             captureRequestBuilder.addTarget(imageReader.getSurface());
+            BarcodeDetector.setImageReader(imageReader);
+
         }
     }
 
@@ -820,32 +837,51 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         textureView = null;
     }
 
+    private static byte[] convertImageToByte(Image image) {
+        byte[] nv21;
+        ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
+        ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
+        ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
+
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        nv21 = new byte[ySize + uSize + vSize];
+
+        //U and V are swapped
+        yBuffer.get(nv21, 0, ySize);
+        vBuffer.get(nv21, ySize, vSize);
+        uBuffer.get(nv21, ySize + vSize, uSize);
+
+        return nv21;
+    }
+
     @Override
     public void onImageAvailable(ImageReader reader) {
         final Image image = reader.acquireLatestImage();
+
         if (image != null) {
             try {
-                detector.detectInImage(FirebaseVisionImage.fromMediaImage(image, firebaseOrientation))
-                        .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionBarcode>>() {
-                            @Override
-                            public void onSuccess(List<FirebaseVisionBarcode> firebaseVisionBarcodes) {
-                                //thread main
-                                if (firebaseVisionBarcodes.size() > 0) {
-                                    for (FirebaseVisionBarcode visionBarcode : firebaseVisionBarcodes) {
-                                        flutterMethodListener.onBarcodeRead(visionBarcode.getRawValue());
-                                    }
-                                }
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        System.out.println("barcode read failed: " + e.getMessage());
-                    }
-                });
-            }catch (IllegalStateException e) {
 
-            }
-            catch (OutOfMemoryError e) {
+
+
+
+                InputImage inputImage = InputImage.fromByteArray(convertImageToByte(image)
+                        , image.getWidth(), image.getHeight(), getJpegOrientation()
+                        , InputImage.IMAGE_FORMAT_NV21);
+
+                BarcodeDetector.detectImage(imageReader, scanner, inputImage, flutterMethodListener);
+
+
+
+
+//                BarcodeDetector.detectImage(imageReader, scanner
+//                        , InputImage.fromMediaImage(image, getJpegOrientation())
+//                        , flutterMethodListener);
+            } catch (IllegalStateException e) {
+
+            } catch (OutOfMemoryError e) {
                 System.gc();
                 //Sometimes out of memory error occurred, ignore it
             } finally {
@@ -877,7 +913,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
 
     public void takePicture(final MethodChannel.Result resultMethodChannel) {
-        if(isReadyForTakingPicture) {
+        if (isReadyForTakingPicture) {
             this.resultMethodChannel = resultMethodChannel;
             if (checkAutoFocusSupported()) {
                 capturePictureWhenFocusTimeout();

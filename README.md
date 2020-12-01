@@ -84,5 +84,6 @@ This plugin automatically manage pause and resume camera based on android, iOS l
  # Notes
  This project is teset on iPhone6, samsung galaxy S7, samsung J7, samsung note 10, samsung s10, iPhone pro max.
  Auto flash for capture (CameraAPI 2) has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
- For these phones set `useCamera2API` false
+ For these phones set `useCamera2API` false.
+ 
  Auto flash for camera preview (scanning barcode mode) dosen't work for samsung J7

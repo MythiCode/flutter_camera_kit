@@ -44,13 +44,21 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
                                 return false;
                             }
                         }
-                        result.success(true);
+                        try {
+                            result.success(true);
+                        } catch (Exception e) {
+
+                        }
                         return false;
                     }
                 });
                 return;
             } else {
-                result.success(true);
+                try {
+                    result.success(true);
+                } catch (Exception e) {
+
+                }
             }
         } else if (call.method.equals("initCamera")) {
             boolean hasBarcodeReader = call.argument("hasBarcodeReader");
@@ -85,9 +93,7 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
 
     public CameraKitFlutterView(ActivityPluginBinding activityPluginBinding, DartExecutor dartExecutor, int viewId) {
         this.channel = new MethodChannel(dartExecutor, "plugins/camera_kit_" + viewId);
-
         this.activityPluginBinding = activityPluginBinding;
-
         this.channel.setMethodCallHandler(this);
         if (getCameraView() == null) {
             cameraView = new CameraBaseView(activityPluginBinding.getActivity(), this);
