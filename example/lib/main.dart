@@ -65,7 +65,7 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               Expanded(
                   child: CameraKitView(
-                hasBarcodeReader: false,
+                hasBarcodeReader: true,
                 barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS,
                 scaleType: ScaleTypeMode.fill,
                 onBarcodeRead: (barcode) {
@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> {
                 },
                 previewFlashMode: CameraFlashMode.on,
                 cameraKitController: cameraKitController,
-                useCamera2API: false,
+                useCamera2API: true,
               )),
 //              Container(height: 250),
               Row(

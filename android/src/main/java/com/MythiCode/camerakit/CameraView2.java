@@ -38,15 +38,9 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.vision.barcode.Barcode;
 import com.google.mlkit.vision.barcode.BarcodeScanner;
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
 import com.google.mlkit.vision.barcode.BarcodeScanning;
-import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -547,7 +541,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         // a camera and start preview from here (otherwise, we wait until the surface is ready in
         // the SurfaceTextureListener).
 //        textureView.setVisibility(View.VISIBLE);
-        if(isCameraVisible) {
+        if (isCameraVisible) {
             if (textureView != null) {
                 if (textureView.isAvailable()) {
                     isDestroy = false;
@@ -597,7 +591,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
             readerCapture = null;
         }
         try {
-            if(scanner != null) {
+            if (scanner != null) {
                 scanner.close();
                 scanner = null;
             }
@@ -666,7 +660,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
             this.isCameraVisible = isCameraVisible;
             if (isCameraVisible) resumeCamera();
             else pauseCamera();
-        }Barcode.ALL_FORMATS
+        }
     }
 
 
@@ -863,29 +857,14 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
         if (image != null) {
             try {
-
-
-
-
-                InputImage inputImage = InputImage.fromByteArray(convertImageToByte(image)
-                        , image.getWidth(), image.getHeight(), getJpegOrientation()
-                        , InputImage.IMAGE_FORMAT_NV21);
-
-                BarcodeDetector.detectImage(imageReader, scanner, inputImage, flutterMethodListener);
-
-
-
-
-//                BarcodeDetector.detectImage(imageReader, scanner
-//                        , InputImage.fromMediaImage(image, getJpegOrientation())
-//                        , flutterMethodListener);
+                BarcodeDetector.detectImage(imageReader, scanner, image, flutterMethodListener, firebaseOrientation);
             } catch (IllegalStateException e) {
 
             } catch (OutOfMemoryError e) {
                 System.gc();
                 //Sometimes out of memory error occurred, ignore it
             } finally {
-                image.close();
+
             }
 
         }

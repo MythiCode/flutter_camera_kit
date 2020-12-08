@@ -1,7 +1,10 @@
+##0.0.67
+
+* Improve speed of reading barcode in Android
 
 ##0.0.66
 
-* Fix bug for resume camera in android
+* Fix bug for resume camera in Android
 
 ##0.0.65
 
