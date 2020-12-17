@@ -15,16 +15,13 @@ Main features:
 
 # Installation
 
-## Firebase
-For barcode reading, You should install firebase in your project. accordig to steps 1, 2, and 3 from [Firebase's Flutter instructions](https://firebase.google.com/docs/flutter/setup).
-You don't need to add any code in your project after installation.
 
 ## iOS
 Add `io.flutter.embedded_views_preview` in info.plist with value `YES`.
 Add `Privacy - Camera Usage Description` in info.plist.
 
 # Usage
-##Sample Usage
+
 For use plugin, You shoude an instance of `CameraKitController` then initial `CameraKitView` passing `CameraKitController` instance to it.
 ```
    cameraKitController = CameraKitController();
@@ -34,7 +31,8 @@ For use plugin, You shoude an instance of `CameraKitController` then initial `Ca
       barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS
       scaleType: ScaleTypeMode.fill,
       previewFlashMode: CameraFlashMode.auto,
-      useCamera2API: true,
+      androidCameraMode: AndroidCameraMode.API_X,
+      cameraSelector: CameraSelector.back
       onPermissionDenied: () {
           print("Camera permission is denied.");
           //ToDo on permission denied by user
@@ -55,18 +53,32 @@ Set barcode format from available values, default value is FORMAT_ALL_FORMATS.
 There are 2 modes `ScaleTypeMode.fill` and `ScaleTypeMode.fit` for this parameter.
 If you want camera preview fill your widget area, use `fill` mode. In this mode, camera preview may be croped for filling widget area.
 If you want camera preview to show entire lens preview, use `fit` mode. In this mode, camera preview may be shows blank areas.
+
 `previewFlashMode`:
-This parameter accepts 3 values. `CameraFlashMode.auto`, `CameraFlashMode.on` and `CameraFlashMode.off`. For changing value after initial use `changeFlashMode` method in controller.
-`useCamera2API`:
-For fixing problem with flash In old phones like Samsung S6, switch between CameraAPI and Camera2 API. Set this parameter false Barcode scanning not support from this. Default value is true.
+This parameter accepts 3 values, `CameraFlashMode.auto`, `CameraFlashMode.on` and `CameraFlashMode.off`. For changing value after initial use `changeFlashMode` method in controller.
+
+`androidCameraMode`:
+**This parameter has been replaced with `useCamera2API`.**
+This parameter accepts 3 values, `API_X`, `API_1`, `API_2`. Default value is `API_X`.
+Some feature is available in each value.
+`API_1` features: Taking picture
+`API_2` features: Taking picture, Scaning barcode (Taking picture with flash has some issues, Auto flash in barcode scanning mode works in some phones.)
+`API_X` features: Taking picture, Scaning barcode (Auto flash in barcode scanning mode doesn't work.)
+
+`cameraSelector`:
+Set front and back camera with this parameter.
+This parameter accepts 3 values, `back` and `front`
+
 `onPermissionDenied`:
 After android and iOS user deny run time permission, this method is called.
+
 `onBarcodeRead`:
 In barcodeReader mode, while camera preview detect barcodes, This method is called.
 
 ## Controller methods
 **Take Picture**
-For taking picture pass `hasBarcodeReader`'s value `false` and then use controller for taking picture.
+You can take picture with this method. Unlike `API_2`, in `API_X`, you can take picture in scaning barcode mode.
+
 ```
   String path = await cameraKitController.takePicture();
 ```
@@ -81,9 +93,4 @@ This plugin automatically manage pause and resume camera based on android, iOS l
     cameraKitController.pauseCamera();
     cameraKitController.resumeCamera();
 ```
- # Notes
- This project is teset on iPhone6, samsung galaxy S7, samsung J7, samsung note 10, samsung s10, iPhone pro max.
- Auto flash for capture (CameraAPI 2) has a bug in samsung galaxy S5 and there is no answer for this issue in git and stackoverflow.
- For these phones set `useCamera2API` false.
- 
- Auto flash for camera preview (scanning barcode mode) dosen't work for samsung J7
+

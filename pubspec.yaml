@@ -1,6 +1,6 @@
 name: camerakit
 description: Flutter camera kit uses native android and ios APIs for taking picture and scanning barcode with controlable flash.
-version: 0.0.67
+version: 0.0.71
 author:
 homepage: https://github.com/MythiCode/flutter_camera_kit
 repository: https://github.com/MythiCode/flutter_camera_kit

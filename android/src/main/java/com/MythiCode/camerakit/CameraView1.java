@@ -7,12 +7,12 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.hardware.Camera;
-import android.media.ExifInterface;
 import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
 import java.io.File;
@@ -38,7 +38,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     private FlutterMethodListener flutterMethodListener;
     private SurfaceHolder mHolder;
     private Camera mCamera;
-    private LinearLayout linearLayout;
+    private FrameLayout frameLayout;
     //    private boolean hasBarcodeReader;
     private char previewFlashMode;
     private SurfaceView surfaceView;
@@ -53,8 +53,8 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
 
     }
 
-    public void initCamera(LinearLayout linearLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
-        this.linearLayout = linearLayout;
+    public void initCamera(FrameLayout frameLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, int cameraSelector) {
+        this.frameLayout = frameLayout;
         this.previewFlashMode = flashMode;
         surfaceView = new SurfaceView(activity);
         surfaceView.setLayoutParams(new LinearLayout.LayoutParams(
@@ -63,8 +63,8 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
         mHolder = surfaceView.getHolder();
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        int height = convertDeviceHeightToSupportedAspectRatio(linearLayout.getWidth(), linearLayout.getHeight());
-        linearLayout.addView(surfaceView);
+        int height = convertDeviceHeightToSupportedAspectRatio(this.frameLayout.getWidth(), this.frameLayout.getHeight());
+        this.frameLayout.addView(surfaceView);
     }
 
     public static int convertDeviceHeightToSupportedAspectRatio(float actualWidth, float actualHeight) {
@@ -152,7 +152,7 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
                 }
 
 
-                linearLayout.post(new Runnable() {
+                frameLayout.post(new Runnable() {
                     @Override
                     public void run() {
                         try {
@@ -198,12 +198,12 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
             Display display = wm.getDefaultDisplay();
             Point size = new Point();
             display.getSize(size);
-            final int y = convertDeviceHeightToSupportedAspectRatio(linearLayout.getWidth(), linearLayout.getHeight());
+            final int y = convertDeviceHeightToSupportedAspectRatio(frameLayout.getWidth(), frameLayout.getHeight());
             if (mCamera == null) return;
             List<Camera.Size> supportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             List<Camera.Size> supportedPictureSizes = mCamera.getParameters().getSupportedPictureSizes();
-            optimalSize = getOptimalPreviewSize(supportedPreviewSizes, linearLayout.getWidth(), y);
-            final Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, linearLayout.getWidth(), y);
+            optimalSize = getOptimalPreviewSize(supportedPreviewSizes, frameLayout.getWidth(), y);
+            final Camera.Size optimalPictureSize = getOptimalPreviewSize(supportedPictureSizes, frameLayout.getWidth(), y);
             Camera.Parameters parameters = mCamera.getParameters();
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             parameters.setPreviewSize(optimalSize.width, optimalSize.height);

@@ -10,6 +10,8 @@ import 'CameraKitController.dart';
 
 enum CameraFlashMode { on, off, auto }
 enum ScaleTypeMode { fit, fill }
+enum AndroidCameraMode { API_1, API_2, API_X }
+enum CameraSelector { front, back }
 enum BarcodeFormats {
   FORMAT_ALL_FORMATS,
   FORMAT_CODE_128,
@@ -54,9 +56,16 @@ class CameraKitView extends StatefulWidget {
   ///Controller for this widget
   final CameraKitController cameraKitController;
 
-  ///For fixing problem with flash In old phones like Samsung S6, switch between CameraAPI and Camera2 API. Set this parameter false
-  ///Barcode scanning not support from this. Default value is true.
-  final bool useCamera2API;
+  ///This parameter has been replaced with `useCamera2API`.
+  ///This parameter accepts 3 values, `API_X`, `API_1`, `API_2`. Default value is `API_X`.
+  ///Some feature is available in each value.
+  ///`API_1` features: Just taking picture
+  ///`API_2` features: Taking picture, Scan barcode (Taking picture with flash has some issues, Auto flash in barcode scanning mode works in some phones.)
+  ///`API_X` features: Taking picture, Scan barcode (Auto flash in barcode scanning mode doesn't work.)
+  final AndroidCameraMode androidCameraMode;
+
+  ///Set front and back camera
+  final CameraSelector cameraSelector;
 
   _BarcodeScannerViewState viewState;
 
@@ -69,7 +78,8 @@ class CameraKitView extends StatefulWidget {
       this.previewFlashMode = CameraFlashMode.auto,
       this.cameraKitController,
       this.onPermissionDenied,
-      this.useCamera2API = true})
+      this.androidCameraMode = AndroidCameraMode.API_X,
+      this.cameraSelector = CameraSelector.back})
       : super(key: key);
 
   dispose() {
@@ -210,6 +220,26 @@ class NativeCameraKitController {
     return flashMode;
   }
 
+  _getAndroidCameraMode(AndroidCameraMode androidCameraMode) {
+    switch (androidCameraMode) {
+      case AndroidCameraMode.API_1:
+        return 1;
+      case AndroidCameraMode.API_2:
+        return 2;
+      case AndroidCameraMode.API_X:
+        return 3;
+    }
+  }
+
+  _getCameraSelector(CameraSelector cameraSelector) {
+    switch (cameraSelector) {
+      case CameraSelector.back:
+        return 0;
+      case CameraSelector.front:
+        return 1;
+    }
+  }
+
   void initCamera() async {
     _channel.setMethodCallHandler(nativeMethodCallHandler);
     _channel.invokeMethod('requestPermission').then((value) {
@@ -220,14 +250,17 @@ class NativeCameraKitController {
             "flashMode": _getCharFlashMode(widget.previewFlashMode),
             "isFillScale": _getScaleTypeMode(widget.scaleType),
             "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat),
-            "useCamera2API": widget.useCamera2API
+            "androidCameraMode":
+                _getAndroidCameraMode(widget.androidCameraMode),
+            "cameraSelector": _getCameraSelector(widget.cameraSelector)
           });
         } else {
           _channel.invokeMethod('initCamera', {
             "hasBarcodeReader": widget.hasBarcodeReader,
             "flashMode": _getCharFlashMode(widget.previewFlashMode),
             "isFillScale": _getScaleTypeMode(widget.scaleType),
-            "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat)
+            "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat),
+            "cameraSelector": _getCameraSelector(widget.cameraSelector)
           });
         }
       } else {

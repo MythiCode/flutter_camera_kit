@@ -75,7 +75,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private ImageReader imageReader;
     private HandlerThread backgroundThread2;
     private Handler backgroundHandler2;
-    private LinearLayout linearLayout;
+    private FrameLayout frameLayout;
     private CameraCharacteristics characteristics;
     private StreamConfigurationMap map;
     private Integer sensorOrientation;
@@ -169,6 +169,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                 case STATE_WAITING_LOCK: {
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState == null) {
+                        mState = STATE_PICTURE_TAKEN;
                         captureStillPicture();
                     } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
                             CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
@@ -294,6 +295,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private Point displaySize;
     private boolean isReadyForTakingPicture = false;
     private BarcodeScanner scanner;
+    private int cameraSelector;
 
 
     public CameraView2(Activity activity, FlutterMethodListener flutterMethodListener) {
@@ -302,9 +304,10 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         this.flutterMethodListener = flutterMethodListener;
     }
 
-    public void initCamera(LinearLayout linearLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode) {
+    public void initCamera(FrameLayout frameLayout, boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, int cameraSelector) {
+        this.cameraSelector = cameraSelector;
         startBackgroundThread();
-        this.linearLayout = linearLayout;
+        this.frameLayout = frameLayout;
         this.hasBarcodeReader = hasBarcodeReader;
         this.previewFlashMode = flashMode;
 
@@ -320,7 +323,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         displaySize = new Point();
         activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
         if (isFillScale == true) //fill
-            linearLayout.setLayoutParams(new FrameLayout.LayoutParams(
+            this.frameLayout.setLayoutParams(new FrameLayout.LayoutParams(
                     displaySize.x,
                     displaySize.y));
 
@@ -329,7 +332,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         textureView.setSurfaceTextureListener(textureListener);
-        linearLayout.addView(textureView);
+        this.frameLayout.addView(textureView);
     }
 
 
@@ -353,7 +356,11 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                 Boolean available = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
                 flashSupported = available == null ? false : available;
                 if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                    if(cameraSelector == 0)
                     continue;
+                } else {
+                    if(cameraSelector == 1)
+                        continue;
                 }
                 StreamConfigurationMap map = characteristics.get(
                         CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -428,6 +435,8 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                             previewSize.getHeight(), previewSize.getWidth());
                 }
 
+                this.cameraId = cameraId;
+
                 return;
             }
         } catch (CameraAccessException e) {
@@ -472,7 +481,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
         Log.e(TAG, "is camera open");
         try {
-            cameraId = manager.getCameraIdList()[0];
+
             map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
             // Add permission for camera and let user grant the permission
@@ -825,9 +834,9 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     public void dispose() {
         closeCamera();
         stopBackgroundThread();
-        linearLayout.removeAllViews();
-        linearLayout.buildLayer();
-        linearLayout = null;
+        frameLayout.removeAllViews();
+        frameLayout.buildLayer();
+        frameLayout = null;
         textureView = null;
     }
 
@@ -985,8 +994,8 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
             captureBuilder.addTarget(readerCapture.getSurface());
 
             // Use the same AE and AF modes as the preview.
-            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+//            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+//                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 //            if(captureFlashMode == 'A'){
 //                if(aeState != null) {
 //                    if(aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED)
@@ -1005,7 +1014,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
 
             cameraCaptureSessions.stopRepeating();
-            cameraCaptureSessions.abortCaptures();
+//            cameraCaptureSessions.abortCaptures();
             cameraCaptureSessions.capture(captureBuilder.build(), CaptureCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -1029,22 +1038,26 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
 
     private void unlockFocus() {
         try {
+            cameraCaptureSessions.abortCaptures();
+            mState = STATE_PREVIEW;
             // Reset the auto-focus trigger
             captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                     CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
             cameraCaptureSessions.capture(captureRequestBuilder.build(), captureCallbackTakePicture,
                     backgroundHandler);
 
-            createCameraPreview();
-//            setFlashMode(captureRequestBuilder, previewFlashMode);
-//
-//            // After this, the camera will go back to the normal state of preview.
-//            mState = STATE_PREVIEW;
-//            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-//                    CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
-//            cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, mCaptureCallback,
-//                    backgroundHandler);
-        } catch (CameraAccessException e) {
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                    CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+
+
+
+            cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackTakePicture,
+                    backgroundHandler);
+
+            setFlashMode(captureRequestBuilder, previewFlashMode);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

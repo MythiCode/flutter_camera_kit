@@ -1,3 +1,17 @@
+
+##0.0.71
+
+* Improve readme
+
+##0.0.70
+
+* CameraX is supported.
+* Front camera is supported for taking picture and scan barcode.
+
+##0.0.68
+
+* Improve take picture with flash in CameraAPI 2
+
 ##0.0.67
 
 * Improve speed of reading barcode in Android

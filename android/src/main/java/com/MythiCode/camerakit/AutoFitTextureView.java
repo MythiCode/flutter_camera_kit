@@ -7,7 +7,18 @@ import android.view.TextureView;
 /**
  * A {@link TextureView} that can be adjusted to a specified aspect ratio.
  */
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.TextureView;
+
+/**
+ * A {@link TextureView} that can be adjusted to a specified aspect ratio.
+ */
 public class AutoFitTextureView extends TextureView {
+
+    private GestureDetector mGestureDetector = null;
 
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
@@ -55,6 +66,26 @@ public class AutoFitTextureView extends TextureView {
                 setMeasuredDimension(height * mRatioWidth / mRatioHeight, height);
             }
         }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent m) {
+        if (mGestureDetector != null) {
+            mGestureDetector.onTouchEvent(m);
+        }
+        return true;
+    }
+
+    public void setGestureListener(GestureDetector.OnGestureListener gestureListener) {
+        if (gestureListener != null) {
+            mGestureDetector = new GestureDetector(getContext(), gestureListener);
+        } else {
+            mGestureDetector = null;
+        }
+    }
+
+    public boolean hasGestureDetector() {
+        return mGestureDetector != null;
     }
 
 }

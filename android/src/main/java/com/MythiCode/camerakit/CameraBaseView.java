@@ -2,8 +2,8 @@ package com.MythiCode.camerakit;
 
 import android.app.Activity;
 import android.graphics.Color;
-import android.os.Build;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
 import io.flutter.plugin.common.MethodChannel;
@@ -14,13 +14,13 @@ public class CameraBaseView implements PlatformView {
 
     private final Activity activity;
     private final FlutterMethodListener flutterMethodListener;
-    private final LinearLayout linearLayout;
+    private final FrameLayout linearLayout;
     private CameraViewInterface cameraViewInterface;
 
     public CameraBaseView(Activity activity, FlutterMethodListener flutterMethodListener) {
         this.activity = activity;
         this.flutterMethodListener = flutterMethodListener;
-        linearLayout = new LinearLayout(activity);
+        linearLayout = new FrameLayout(activity);
         linearLayout.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT));
@@ -28,18 +28,24 @@ public class CameraBaseView implements PlatformView {
 
     }
 
-    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, boolean useCamera2API) {
-        if(hasBarcodeReader && !useCamera2API){
-            throw new RuntimeException("You cannot use barcode reader for reading barcode");
+    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, int androidCameraMode, int cameraSelector) {
+        if (hasBarcodeReader && androidCameraMode == 1) {
+            throw new RuntimeException("You cannot use barcode reader for reading barcode in Camera API1");
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (useCamera2API)
+        switch (androidCameraMode) {
+            case 3:
+                cameraViewInterface = new CameraViewX(activity, flutterMethodListener);
+                break;
+            case 2:
                 cameraViewInterface = new CameraView2(activity, flutterMethodListener);
-            else cameraViewInterface = new CameraView1(activity, flutterMethodListener);
-        } else {
-            cameraViewInterface = new CameraView1(activity, flutterMethodListener);
+                break;
+            case 1:
+                cameraViewInterface = new CameraView1(activity, flutterMethodListener);
+                break;
         }
-        cameraViewInterface.initCamera(linearLayout, hasBarcodeReader, flashMode, isFillScale, barcodeMode);
+
+
+        cameraViewInterface.initCamera(linearLayout, hasBarcodeReader, flashMode, isFillScale, barcodeMode, cameraSelector);
     }
 
     public void setCameraVisible(boolean isCameraVisible) {
