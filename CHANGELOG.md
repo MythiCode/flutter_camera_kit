@@ -1,3 +1,6 @@
+##0.0.72
+
+* Fix bug in resume camera in CameraX
 
 ##0.0.71
 

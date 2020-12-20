@@ -406,7 +406,7 @@ public class CameraViewX implements CameraViewInterface {
 
     public void resumeCamera2() {
         if (isCameraVisible) {
-            if (scanner == null) scanner = BarcodeScanning.getClient(options);
+            if (scanner == null && hasBarcodeReader) scanner = BarcodeScanning.getClient(options);
             startCamera();
         }
     }
