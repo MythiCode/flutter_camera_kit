@@ -14,10 +14,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-  CameraKitView cameraKitView;
+  String? _platformVersion = 'Unknown';
+  CameraKitView? cameraKitView;
   CameraFlashMode _flashMode = CameraFlashMode.on;
-  CameraKitController cameraKitController;
+  CameraKitController? cameraKitController;
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _MyAppState extends State<MyApp> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> initPlatformState() async {
-    String platformVersion;
+    String? platformVersion;
     // Platform messages may fail, so we use a try/catch PlatformException.
 //    try {
 //      platformVersion = await Camerakit.platformVersion;
@@ -71,10 +71,10 @@ class _MyAppState extends State<MyApp> {
                 onBarcodeRead: (barcode) {
                   print("Flutter read barcode: " + barcode);
                 },
-                previewFlashMode: CameraFlashMode.on,
+                previewFlashMode: CameraFlashMode.auto,
                 cameraKitController: cameraKitController,
                 androidCameraMode: AndroidCameraMode.API_X,
-                cameraSelector: CameraSelector.front,
+                cameraSelector: CameraSelector.back,
               )),
 //              Container(height: 250),
               Row(
@@ -83,7 +83,7 @@ class _MyAppState extends State<MyApp> {
                     child: Text("Flash OFF"),
                     onPressed: () {
                       setState(() {
-                        cameraKitController
+                        cameraKitController!
                             .changeFlashMode(CameraFlashMode.off);
                         _platformVersion = "bbasda";
                       });
@@ -92,15 +92,15 @@ class _MyAppState extends State<MyApp> {
                   RaisedButton(
                     child: Text("Capture"),
                     onPressed: () {
-                      cameraKitController.takePicture().then((value) =>
-                          print("flutter take pictre result: " + value));
+                      cameraKitController!.takePicture().then((value) =>
+                          print("flutter take pictre result: " + value!));
                     },
                   ),
                   RaisedButton(
                     child: Text("Flash On"),
                     onPressed: () {
                       setState(() {
-                        cameraKitController.changeFlashMode(CameraFlashMode.on);
+                        cameraKitController!.changeFlashMode(CameraFlashMode.on);
                         _platformVersion = "bbasda";
                       });
                     },

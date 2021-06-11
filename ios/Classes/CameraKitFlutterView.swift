@@ -18,6 +18,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
     let frame: CGRect
 
     var hasBarcodeReader:Bool!
+    var imageSavePath:String!
     var isCameraVisible:Bool! = true
     var initCameraFinished:Bool! = false
     var isFillScale:Bool!
@@ -112,8 +113,9 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                   
                 }
              else if FlutterMethodCall.method == "takePicture" {
-                    self.flutterResultTakePicture = FlutterResult
-                    self.takePicture()
+                self.imageSavePath = (myArgs?["path"] ) as! String
+                self.flutterResultTakePicture = FlutterResult
+                self.takePicture()
                         }
             })
     }
@@ -122,7 +124,7 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
        
         if(self.hasBarcodeReader) {
             do{
-               if (captureDevice.hasTorch)
+               if (captureDevice.hasFlash)
                    {
                        try captureDevice.lockForConfiguration()
                     captureDevice.torchMode = (self.flashMode == .auto) ?(.auto):(self.flashMode == .on ? (.on) : (.off))
@@ -241,21 +243,33 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
                    previewLayer.videoGravity = AVLayerVideoGravity.resizeAspect
             }
 
-            let rootLayer :CALayer = self.previewView.layer
-            rootLayer.masksToBounds = true
-            previewLayer.frame = rootLayer.bounds
-            rootLayer.addSublayer(self.previewLayer)
-            session.startRunning()
-            if isFirst == true {
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
-                                    self.initCameraFinished = true
-                           }
-            }
+            startSession(isFirst: isFirst)
        
             
         } catch let error as NSError {
             deviceInput = nil
             print("error: \(error.localizedDescription)")
+        }
+    }
+    
+    func startSession(isFirst: Bool) {
+        DispatchQueue.main.async {
+        let rootLayer :CALayer = self.previewView.layer
+        rootLayer.masksToBounds = true
+        if(rootLayer.bounds.size.width != 0 && rootLayer.bounds.size.width != 0){
+            self.previewLayer.frame = rootLayer.bounds
+            rootLayer.addSublayer(self.previewLayer)
+            self.session.startRunning()
+            if isFirst == true {
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+                    self.initCameraFinished = true
+                           }
+            }
+        } else {
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                self.startSession(isFirst: isFirst)
+                           }
+            }
         }
     }
     
@@ -321,12 +335,28 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
         guard let data = image.jpegData(compressionQuality: 1) ?? image.pngData() else {
             return false
         }
+        var fileURL : URL? = nil
+        if self.imageSavePath == "" {
+            guard let directory = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) as NSURL else {
+                return false
+            }
+            fileURL = directory.appendingPathComponent("pic.jpg")!
+        } else  {
+            fileURL = URL(fileURLWithPath: self.imageSavePath)
+        }
+     
+     
+        
+        
+        
+        
+        
         guard let directory = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) as NSURL else {
             return false
         }
         do {
-            try data.write(to: directory.appendingPathComponent("pic.jpg")!)
-            flutterResultTakePicture(directory.path!  + "/pic.jpg")
+            try data.write(to: fileURL!)
+            flutterResultTakePicture(fileURL?.path)
             //print(directory)
             return true
         } catch {
@@ -337,7 +367,9 @@ class CameraKitFlutterView : NSObject, FlutterPlatformView, AVCaptureVideoDataOu
     }
     func takePicture() {
         let settings = AVCapturePhotoSettings()
-        settings.flashMode = self.flashMode
+        if captureDevice.hasFlash {
+            settings.flashMode = self.flashMode
+        }
         photoOutput?.capturePhoto(with: settings, delegate:self)
     }
     

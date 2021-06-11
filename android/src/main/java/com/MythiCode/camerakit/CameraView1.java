@@ -253,13 +253,19 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
         return Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
     }
 
+    private File getPictureFile(String path) {
+        if (path.equals(""))
+            return new File(activity.getCacheDir(), "pic.jpg");
+        else return new File(path);
+    }
+
     @Override
-    public void takePicture(final MethodChannel.Result result) {
+    public void takePicture(final String path, final MethodChannel.Result result) {
 
         mCamera.takePicture(null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
-                File pictureFile = new File(activity.getCacheDir(), "pic.jpg");
+                File pictureFile = getPictureFile(path);
                 try {
 
                     if(pictureFile.exists())

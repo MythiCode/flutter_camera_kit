@@ -1,3 +1,4 @@
+Use Prerelease version to support nullsafety.
 # Flutter Camera Kit
 
 
@@ -46,9 +47,10 @@ For use plugin, You shoude an instance of `CameraKitController` then initial `Ca
 ## Cunstructor parameters
 `hasBarcodeReader`:
 True means scan barcode mode and false means take picture mode
-Because of performance reasons, you can't use barcode reader mode and take picture mode simultaneously.
+
 `barcodeFormat`:
 Set barcode format from available values, default value is FORMAT_ALL_FORMATS.
+
 `scaleType`:
 There are 2 modes `ScaleTypeMode.fill` and `ScaleTypeMode.fit` for this parameter.
 If you want camera preview fill your widget area, use `fill` mode. In this mode, camera preview may be croped for filling widget area.
@@ -78,9 +80,10 @@ In barcodeReader mode, while camera preview detect barcodes, This method is call
 ## Controller methods
 **Take Picture**
 You can take picture with this method. Unlike `API_2`, in `API_X`, you can take picture in scaning barcode mode.
+You can pass your custom path for save image. You can pass nothing and the image will be saved in default path.
 
 ```
-  String path = await cameraKitController.takePicture();
+  String path = await cameraKitController.takePicture({Your custom path});
 ```
 **Change Flash Mode**
 For changing flash mode, don't change cunstructor parameter. Use `changeFlashMode` method in controller. Pass `CameraFlashMode` enum to this method.

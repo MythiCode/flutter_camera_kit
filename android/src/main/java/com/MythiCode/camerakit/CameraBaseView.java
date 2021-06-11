@@ -57,8 +57,8 @@ public class CameraBaseView implements PlatformView {
         cameraViewInterface.changeFlashMode(captureFlashMode);
     }
 
-    public void takePicture(final MethodChannel.Result result) {
-        cameraViewInterface.takePicture(result);
+    public void takePicture(String path, final MethodChannel.Result result) {
+        cameraViewInterface.takePicture(path, result);
     }
 
     public void pauseCamera() {
@@ -76,6 +76,7 @@ public class CameraBaseView implements PlatformView {
 
     @Override
     public void dispose() {
-        cameraViewInterface.dispose();
+        if (cameraViewInterface != null)
+            cameraViewInterface.dispose();
     }
 }

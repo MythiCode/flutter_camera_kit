@@ -169,7 +169,7 @@ public class CameraView2_V2 implements CameraViewInterface {
     private android.util.Size mPreviewSize;
     private ImageReader mImageReader;
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
-    private String mNextPictureAbsolutePath;
+    private File mNextPictureAbsoluteFile;
     private boolean mAutoFocusSupported;
     private boolean mFlashSupported;
     private String mCameraId;
@@ -182,6 +182,7 @@ public class CameraView2_V2 implements CameraViewInterface {
     private MeteringRectangle[] mAERegions;
     private CaptureRequest mPreviewRequest;
     private MethodChannel.Result resultMethodChannelTakePicture;
+    private String imageSavePath;
 
 
     public CameraView2_V2(Activity activity, FlutterMethodListener flutterMethodListener) {
@@ -736,8 +737,9 @@ public class CameraView2_V2 implements CameraViewInterface {
     }
 
     @Override
-    public void takePicture(MethodChannel.Result result) {
+    public void takePicture(String path, MethodChannel.Result result) {
         resultMethodChannelTakePicture = result;
+        imageSavePath = path;
         if (mAutoFocus && mAutoFocusSupported) {
             Log.i(TAG, "takePicture lockFocus");
             capturePictureWhenFocusTimeout(); //Sometimes, camera do not focus in some devices.
@@ -768,9 +770,11 @@ public class CameraView2_V2 implements CameraViewInterface {
 
     }
 
-    private String getPictureFilePath(Context context) {
-        final File dir = new File(activity.getCacheDir(), "pic.jpg");
-        return dir == null ? "" : dir.toString();
+    private File getPictureFile() {
+        if(imageSavePath.equals("")) {
+            return new File(activity.getCacheDir(), "pic.jpg");
+        }
+        else return new File(imageSavePath);
     }
 
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
@@ -782,9 +786,9 @@ public class CameraView2_V2 implements CameraViewInterface {
             if (hasBarcodeReader) {
                 BarcodeDetector.detectImage(mImageReader, scanner, image, flutterMethodListener, mSensorOrientation);
             } else {
-                mNextPictureAbsolutePath = getPictureFilePath(activity);
-                mBackgroundHandler.post(new ImageSaver(flutterMethodListener, resultMethodChannelTakePicture, image, new File(mNextPictureAbsolutePath)));
-                Log.i(TAG, "Picture saved: " + mNextPictureAbsolutePath);
+                mNextPictureAbsoluteFile = getPictureFile();
+                mBackgroundHandler.post(new ImageSaver(flutterMethodListener, resultMethodChannelTakePicture, image, mNextPictureAbsoluteFile));
+                Log.i(TAG, "Picture saved: " + mNextPictureAbsoluteFile);
             }
         }
 

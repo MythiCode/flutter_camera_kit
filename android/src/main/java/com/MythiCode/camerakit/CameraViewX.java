@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -46,7 +45,6 @@ import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -325,7 +323,7 @@ public class CameraViewX implements CameraViewInterface {
     }
 
     private void bindCamera() {
-        cameraProvider.unbind();
+        cameraProvider.unbindAll();
         if (hasBarcodeReader) {
             camera = cameraProvider.bindToLifecycle((LifecycleOwner) activity, cameraSelector
                     , preview, imageCapture, imageAnalyzer);
@@ -357,8 +355,8 @@ public class CameraViewX implements CameraViewInterface {
 
 
     @Override
-    public void takePicture(final MethodChannel.Result result) {
-        final File file = getPictureFile();
+    public void takePicture(String path, final MethodChannel.Result result) {
+        final File file = getPictureFile(path);
         ImageCapture.OutputFileOptions outputOptions = new ImageCapture.OutputFileOptions.Builder(file).build();
 
 
@@ -411,8 +409,10 @@ public class CameraViewX implements CameraViewInterface {
         }
     }
 
-    private File getPictureFile() {
-        return new File(activity.getCacheDir(), "pic.jpg");
+    private File getPictureFile(String path) {
+        if (path.equals(""))
+            return new File(activity.getCacheDir(), "pic.jpg");
+        else return new File(path);
     }
 
 

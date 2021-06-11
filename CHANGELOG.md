@@ -1,3 +1,14 @@
+##0.0.76
+
+* Migrated to null safety
+##0.0.74
+
+* Fixed crash happened when toggling camera on and off frequently in CameraX
+
+##0.0.73
+
+* Improve readme
+
 ##0.0.72
 
 * Fix bug in resume camera in CameraX

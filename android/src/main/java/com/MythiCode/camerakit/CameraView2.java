@@ -287,7 +287,6 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private int firebaseOrientation;
     private boolean isCameraVisible = true;
     private boolean isDestroy;
-    private File file;
     private ImageReader readerCapture;
     private MethodChannel.Result resultMethodChannel;
     private CaptureRequest mainPreviewRequest;
@@ -296,6 +295,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private boolean isReadyForTakingPicture = false;
     private BarcodeScanner scanner;
     private int cameraSelector;
+    private String imageSavePath;
 
 
     public CameraView2(Activity activity, FlutterMethodListener flutterMethodListener) {
@@ -356,10 +356,10 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                 Boolean available = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
                 flashSupported = available == null ? false : available;
                 if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
-                    if(cameraSelector == 0)
-                    continue;
+                    if (cameraSelector == 0)
+                        continue;
                 } else {
-                    if(cameraSelector == 1)
+                    if (cameraSelector == 1)
                         continue;
                 }
                 StreamConfigurationMap map = characteristics.get(
@@ -783,7 +783,6 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     private List<Surface> getSurfaceList() {
         readerCapture = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
         readerCapture.setOnImageAvailableListener(takePictureImageListener, backgroundHandler);
-        file = new File(activity.getCacheDir(), "pic.jpg");
         if (hasBarcodeReader)
             return Arrays.asList(surface, imageReader.getSurface());
         else return Arrays.asList(surface, readerCapture.getSurface());
@@ -900,7 +899,8 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
     }
 
 
-    public void takePicture(final MethodChannel.Result resultMethodChannel) {
+    public void takePicture(String path, final MethodChannel.Result resultMethodChannel) {
+        imageSavePath = path;
         if (isReadyForTakingPicture) {
             this.resultMethodChannel = resultMethodChannel;
             if (checkAutoFocusSupported()) {
@@ -977,6 +977,13 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         }
     };
 
+    private File getPictureFile() {
+        if (imageSavePath.equals("")) {
+            return new File(activity.getCacheDir(), "pic.jpg");
+        } else return new File(imageSavePath);
+    }
+
+
     /**
      * Capture a still picture. This method should be called when we get a response in
      * {@link #captureCallbackTakePicture} from both {@link #lockFocus()}.
@@ -989,7 +996,7 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                     cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
 
 
-            takePictureImageListener = new TakePictureImageListener(flutterMethodListener, resultMethodChannel, file);
+            takePictureImageListener = new TakePictureImageListener(flutterMethodListener, resultMethodChannel, getPictureFile());
             readerCapture.setOnImageAvailableListener(takePictureImageListener, backgroundHandler);
             captureBuilder.addTarget(readerCapture.getSurface());
 
@@ -1050,7 +1057,6 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
                     CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
             captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-
 
 
             cameraCaptureSessions.setRepeatingRequest(mainPreviewRequest, captureCallbackTakePicture,

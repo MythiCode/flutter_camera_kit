@@ -75,7 +75,8 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
         } else if (call.method.equals("pauseCamera")) {
             getCameraView().pauseCamera();
         } else if (call.method.equals("takePicture")) {
-            getCameraView().takePicture(result);
+            String path = call.argument("path").toString();
+            getCameraView().takePicture(path, result);
         } else if (call.method.equals("changeFlashMode")) {
             char captureFlashMode = call.argument("flashMode").toString().charAt(0);
             getCameraView().changeFlashMode(captureFlashMode);
