@@ -114,9 +114,9 @@ class _MyAppState extends State<MyApp> {
                 builder: (context) => RaisedButton(
                   child: Text("GO"),
                   onPressed: () async {
-                    PickedFile? file = await ImagePicker.platform.pickImage(source: ImageSource.camera);
-                    String path = file!.path;
-                    final res = await CameraKitController().processImage(path);
+                    // PickedFile? file = await ImagePicker.platform.pickImage(source: ImageSource.camera);
+                    // String path = file!.path;
+                    final res = await CameraKitController().processImage("path");
                     // Navigator.push(
                     //     context,
                     //     MaterialPageRoute(
