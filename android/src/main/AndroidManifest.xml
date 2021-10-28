@@ -2,7 +2,7 @@
   package="com.MythiCode.camerakit">
 
     <uses-permission android:name="android.permission.CAMERA" />
-
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
 
     <meta-data

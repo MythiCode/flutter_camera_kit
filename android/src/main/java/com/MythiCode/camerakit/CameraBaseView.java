@@ -28,24 +28,33 @@ public class CameraBaseView implements PlatformView {
 
     }
 
-    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale, int barcodeMode, int androidCameraMode, int cameraSelector) {
+    public void initCamera(boolean hasBarcodeReader, char flashMode, boolean isFillScale
+            , int barcodeMode, int androidCameraMode
+            , int cameraSelector, boolean isVideoMode) {
         if (hasBarcodeReader && androidCameraMode == 1) {
             throw new RuntimeException("You cannot use barcode reader for reading barcode in Camera API1");
         }
-        switch (androidCameraMode) {
-            case 3:
-                cameraViewInterface = new CameraViewX(activity, flutterMethodListener);
-                break;
-            case 2:
-                cameraViewInterface = new CameraView2(activity, flutterMethodListener);
-                break;
-            case 1:
-                cameraViewInterface = new CameraView1(activity, flutterMethodListener);
-                break;
+        if(isVideoMode) {
+            cameraViewInterface = new CameraViewX(activity, flutterMethodListener);
+            cameraViewInterface.setVideoMode();
+        }
+        else {
+            switch (androidCameraMode) {
+                case 3:
+                    cameraViewInterface = new CameraViewX(activity, flutterMethodListener);
+                    break;
+                case 2:
+                    cameraViewInterface = new CameraView2(activity, flutterMethodListener);
+                    break;
+                case 1:
+                    cameraViewInterface = new CameraView1(activity, flutterMethodListener);
+                    break;
+            }
         }
 
 
-        cameraViewInterface.initCamera(linearLayout, hasBarcodeReader, flashMode, isFillScale, barcodeMode, cameraSelector);
+        cameraViewInterface.initCamera(linearLayout, hasBarcodeReader, flashMode, isFillScale
+                , barcodeMode, cameraSelector);
     }
 
     public void setCameraVisible(boolean isCameraVisible) {

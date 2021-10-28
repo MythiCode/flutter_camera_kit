@@ -1,4 +1,5 @@
 import 'package:camerakit/CameraKitView.dart';
+import 'package:flutter/services.dart';
 
 ///This controller is used to control CameraKiView.dart
 class CameraKitController {
@@ -36,4 +37,13 @@ class CameraKitController {
   void setView(CameraKitView cameraKitView) {
     this.cameraKitView = cameraKitView;
   }
+
+  Future<String?> processImage(String path){
+    var _channel = new MethodChannel('plugins/camera_kit_direct' );
+
+    return _channel.invokeMethod<String>(
+        'processImage', {"path": path});
+
+  }
+
 }

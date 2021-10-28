@@ -566,6 +566,16 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         }
     }
 
+    @Override
+    public void startRecording(String path, MethodChannel.Result result) {
+        
+    }
+
+    @Override
+    public void stopRecording() {
+
+    }
+
     public void pauseCamera() {
         System.out.println("CameraView Lif Cycle pause: " + this.toString());
 
@@ -837,6 +847,11 @@ public class CameraView2 implements CameraViewInterface, ImageReader.OnImageAvai
         frameLayout.buildLayer();
         frameLayout = null;
         textureView = null;
+    }
+
+    @Override
+    public void setVideoMode() {
+
     }
 
     private static byte[] convertImageToByte(Image image) {

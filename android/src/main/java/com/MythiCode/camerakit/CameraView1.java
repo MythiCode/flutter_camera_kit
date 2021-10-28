@@ -233,7 +233,22 @@ public class CameraView1 implements SurfaceHolder.Callback, CameraViewInterface 
     }
 
     @Override
+    public void startRecording(String path, MethodChannel.Result result) {
+
+    }
+
+    @Override
+    public void stopRecording() {
+
+    }
+
+    @Override
     public void dispose() {
+
+    }
+
+    @Override
+    public void setVideoMode() {
 
     }
 

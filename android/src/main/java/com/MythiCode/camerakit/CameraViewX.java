@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
@@ -27,6 +28,7 @@ import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
+import androidx.camera.core.VideoCapture;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
@@ -78,6 +80,8 @@ public class CameraViewX implements CameraViewInterface {
     private CameraSelector cameraSelector;
     private Preview preview;
     private Size optimalPreviewSize;
+    private boolean isVideoMode;
+    private VideoCapture videoCapture;
 
 
     public CameraViewX(Activity activity, FlutterMethodListener flutterMethodListener) {
@@ -264,6 +268,7 @@ public class CameraViewX implements CameraViewInterface {
         }
     }
 
+    @SuppressLint("RestrictedApi")
     private void startCamera() {
         cameraProviderFuture = ProcessCameraProvider.getInstance(activity);
         cameraProviderFuture.addListener(new Runnable() {
@@ -278,28 +283,35 @@ public class CameraViewX implements CameraViewInterface {
                             .build();
                     preview.setSurfaceProvider(previewView.createSurfaceProvider());
 
-
-                    imageCapture = new ImageCapture.Builder()
-                            .setFlashMode(getFlashMode())
-                            .setTargetResolution(new Size(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight()))
-                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                            .build();
-
-                    if (hasBarcodeReader) {
-                        imageAnalyzer = new ImageAnalysis.Builder()
-                                .build();
-                        imageAnalyzer.setAnalyzer(new Executor() {
-                            @Override
-                            public void execute(Runnable command) {
-                                command.run();
-                            }
-                        }, new BarcodeAnalyzer());
-                    }
-
-
                     if (userCameraSelector == 0)
                         cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
                     else cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA;
+
+
+                    if (isVideoMode) {
+                        videoCapture = new VideoCapture.Builder()
+                                .setTargetResolution(new Size(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight()))
+                                .build();
+                    } else {
+                        imageCapture = new ImageCapture.Builder()
+                                .setFlashMode(getFlashMode())
+                                .setTargetResolution(new Size(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight()))
+                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .build();
+
+                        if (hasBarcodeReader) {
+                            imageAnalyzer = new ImageAnalysis.Builder()
+                                    .build();
+                            imageAnalyzer.setAnalyzer(new Executor() {
+                                @Override
+                                public void execute(Runnable command) {
+                                    command.run();
+                                }
+                            }, new BarcodeAnalyzer());
+                        }
+
+                    }
+
 
                     bindCamera();
 
@@ -324,16 +336,47 @@ public class CameraViewX implements CameraViewInterface {
 
     private void bindCamera() {
         cameraProvider.unbindAll();
-        if (hasBarcodeReader) {
-            camera = cameraProvider.bindToLifecycle((LifecycleOwner) activity, cameraSelector
-                    , preview, imageCapture, imageAnalyzer);
-            setFlashBarcodeReader();
-        } else {
+        if (isVideoMode) {
             cameraProvider.bindToLifecycle((LifecycleOwner) activity, cameraSelector
-                    , preview, imageCapture);
+                    , preview, videoCapture);
+        } else {
+            if (hasBarcodeReader) {
+                camera = cameraProvider.bindToLifecycle((LifecycleOwner) activity, cameraSelector
+                        , preview, imageCapture, imageAnalyzer);
+                setFlashBarcodeReader();
+            } else {
+                cameraProvider.bindToLifecycle((LifecycleOwner) activity, cameraSelector
+                        , preview, imageCapture);
+            }
         }
     }
 
+
+    @SuppressLint("RestrictedApi")
+    public void startRecording(String path, final MethodChannel.Result result) {
+        File videoFile = getVideoFile("");
+        videoCapture.startRecording(getVideoFile(""), ContextCompat.getMainExecutor(activity),
+                new VideoCapture.OnVideoSavedCallback() {
+                    @Override
+                    public void onVideoSaved(@NonNull File file) {
+                        flutterMethodListener.onVideoRecord(result, file + "");
+                    }
+
+                    @Override
+                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+                        flutterMethodListener.onVideoRecordFailed(result, message);
+                    }
+                });
+    }
+
+
+
+    @SuppressLint("RestrictedApi")
+    public void stopRecording() {
+        if(videoCapture != null) {
+            videoCapture.stopRecording();
+        }
+    }
 
     @Override
     public void setCameraVisible(boolean isCameraVisible) {
@@ -393,6 +436,11 @@ public class CameraViewX implements CameraViewInterface {
 
     }
 
+    @Override
+    public void setVideoMode() {
+        isVideoMode = true;
+    }
+
 
     public void pauseCamera2() {
         cameraProvider.unbindAll();
@@ -412,6 +460,13 @@ public class CameraViewX implements CameraViewInterface {
     private File getPictureFile(String path) {
         if (path.equals(""))
             return new File(activity.getCacheDir(), "pic.jpg");
+        else return new File(path);
+    }
+
+
+    private File getVideoFile(String path) {
+        if (path.equals(""))
+            return new File(activity.getCacheDir(), "video.mp4");
         else return new File(path);
     }
 

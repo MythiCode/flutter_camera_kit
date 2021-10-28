@@ -12,6 +12,9 @@ public interface CameraViewInterface {
     void takePicture(String path, final MethodChannel.Result result);
     void pauseCamera();
     void resumeCamera();
+    void startRecording(String path, final MethodChannel.Result result);
+    void stopRecording();
     void dispose();
+    void setVideoMode();
 
 }

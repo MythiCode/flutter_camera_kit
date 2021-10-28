@@ -28,36 +28,75 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull final MethodChannel.Result result) {
         if (call.method.equals("requestPermission")) {
-            if (ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(activityPluginBinding.getActivity(), new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-                activityPluginBinding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
-                    @Override
-                    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-                        for (int i :
-                                grantResults) {
-                            if (i == PackageManager.PERMISSION_DENIED) {
-                                try {
-                                    result.success(false);
-                                }catch (Exception e){
+            boolean isVideoMode = call.argument("isVideoMode");
+            if (isVideoMode) {
+                if (ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                        || ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+                        || ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    ActivityCompat.requestPermissions(activityPluginBinding.getActivity(), new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, REQUEST_CAMERA_PERMISSION);
+                    activityPluginBinding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+                        @Override
+                        public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                            for (int i :
+                                    grantResults) {
+                                if (i == PackageManager.PERMISSION_DENIED) {
+                                    try {
+                                        result.success(false);
+                                    } catch (Exception e) {
 
+                                    }
+                                    return false;
                                 }
-                                return false;
                             }
-                        }
-                        try {
-                            result.success(true);
-                        } catch (Exception e) {
+                            try {
+                                result.success(true);
+                            } catch (Exception e) {
 
+                            }
+                            return false;
                         }
-                        return false;
+                    });
+                    return;
+                } else {
+                    try {
+                        result.success(true);
+                    } catch (Exception e) {
+
                     }
-                });
-                return;
+                }
             } else {
-                try {
-                    result.success(true);
-                } catch (Exception e) {
+                if (ActivityCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(activityPluginBinding.getActivity(), new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+                    activityPluginBinding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+                        @Override
+                        public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                            for (int i :
+                                    grantResults) {
+                                if (i == PackageManager.PERMISSION_DENIED) {
+                                    try {
+                                        result.success(false);
+                                    } catch (Exception e) {
 
+                                    }
+                                    return false;
+                                }
+                            }
+                            try {
+                                result.success(true);
+                            } catch (Exception e) {
+
+                            }
+                            return false;
+                        }
+                    });
+                    return;
+                } else {
+                    try {
+                        result.success(true);
+                    } catch (Exception e) {
+
+                    }
                 }
             }
         } else if (call.method.equals("initCamera")) {
@@ -67,8 +106,10 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
             int barcodeMode = call.argument("barcodeMode");
             int androidCameraMode = call.argument("androidCameraMode");
             int cameraSelector = call.argument("cameraSelector");
+            boolean isVideoMode = call.argument("isVideoMode");
             getCameraView().initCamera(hasBarcodeReader, flashMode, isFillScale, barcodeMode
-                    , androidCameraMode, cameraSelector);
+                    , androidCameraMode, cameraSelector, isVideoMode);
+
         } else if (call.method.equals("resumeCamera")) {
             getCameraView().resumeCamera();
 
@@ -136,6 +177,26 @@ public class CameraKitFlutterView implements PlatformView, MethodChannel.MethodC
             @Override
             public void run() {
                 result.error(errorCode, errorMessage, null);
+            }
+        });
+    }
+
+    @Override
+    public void onVideoRecord(final MethodChannel.Result result, final String filePath) {
+        activityPluginBinding.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                result.success(filePath);
+            }
+        });
+    }
+
+    @Override
+    public void onVideoRecordFailed(final MethodChannel.Result result, final String message) {
+        activityPluginBinding.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                result.error("-1", message, null);
             }
         });
     }

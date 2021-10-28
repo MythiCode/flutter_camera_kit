@@ -67,6 +67,9 @@ class CameraKitView extends StatefulWidget {
   ///Set front and back camera
   final CameraSelector cameraSelector;
 
+  ///Set take picture or video mode
+  final bool isVideoMode;
+
   late _BarcodeScannerViewState viewState;
 
   CameraKitView(
@@ -79,7 +82,8 @@ class CameraKitView extends StatefulWidget {
       this.cameraKitController,
       this.onPermissionDenied,
       this.androidCameraMode = AndroidCameraMode.API_X,
-      this.cameraSelector = CameraSelector.back})
+      this.cameraSelector = CameraSelector.back,
+      this.isVideoMode = false})
       : super(key: key);
 
   dispose() {
@@ -242,7 +246,8 @@ class NativeCameraKitController {
 
   void initCamera() async {
     _channel.setMethodCallHandler(nativeMethodCallHandler);
-    _channel.invokeMethod('requestPermission').then((value) {
+    _channel.invokeMethod(
+        'requestPermission', {"isVideoMode": widget.isVideoMode}).then((value) {
       if (value) {
         if (Platform.isAndroid) {
           _channel.invokeMethod('initCamera', {
@@ -252,7 +257,8 @@ class NativeCameraKitController {
             "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat),
             "androidCameraMode":
                 _getAndroidCameraMode(widget.androidCameraMode),
-            "cameraSelector": _getCameraSelector(widget.cameraSelector)
+            "cameraSelector": _getCameraSelector(widget.cameraSelector),
+            "isVideoMode": widget.isVideoMode
           });
         } else {
           _channel.invokeMethod('initCamera', {
@@ -260,7 +266,8 @@ class NativeCameraKitController {
             "flashMode": _getCharFlashMode(widget.previewFlashMode),
             "isFillScale": _getScaleTypeMode(widget.scaleType),
             "barcodeMode": _getBarcodeModeValue(widget.barcodeFormat),
-            "cameraSelector": _getCameraSelector(widget.cameraSelector)
+            "cameraSelector": _getCameraSelector(widget.cameraSelector),
+            "isVideoMode": widget.isVideoMode
           });
         }
       } else {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camerakit/CameraKitController.dart';
 import 'package:camerakit/CameraKitView.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(MyApp());
@@ -15,7 +16,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _platformVersion = 'Unknown';
-  CameraKitView? cameraKitView;
+
   CameraFlashMode _flashMode = CameraFlashMode.on;
   CameraKitController? cameraKitController;
 
@@ -24,14 +25,14 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     cameraKitController = CameraKitController();
     print("cameraKitController" + cameraKitController.toString());
-    cameraKitView = CameraKitView(
-      hasBarcodeReader: true,
-      onBarcodeRead: (barcode) {
-        print("Flutter read barcode: " + barcode);
-      },
-      previewFlashMode: CameraFlashMode.auto,
-      cameraKitController: cameraKitController,
-    );
+    // cameraKitView = CameraKitView(
+    //   hasBarcodeReader: true,
+    //   onBarcodeRead: (barcode) {
+    //     print("Flutter read barcode: " + barcode);
+    //   },
+    //   previewFlashMode: CameraFlashMode.auto,
+    //   cameraKitController: cameraKitController,
+    // );
     initPlatformState();
   }
 
@@ -64,18 +65,20 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             children: <Widget>[
               Expanded(
-                  child: CameraKitView(
-                hasBarcodeReader: false,
-                barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS,
-                scaleType: ScaleTypeMode.fill,
-                onBarcodeRead: (barcode) {
-                  print("Flutter read barcode: " + barcode);
-                },
-                previewFlashMode: CameraFlashMode.auto,
-                cameraKitController: cameraKitController,
-                androidCameraMode: AndroidCameraMode.API_X,
-                cameraSelector: CameraSelector.back,
-              )),
+                child:Text("salam")
+              //     child: CameraKitView(
+              //   hasBarcodeReader: false,
+              //   barcodeFormat: BarcodeFormats.FORMAT_ALL_FORMATS,
+              //   scaleType: ScaleTypeMode.fill,
+              //   onBarcodeRead: (barcode) {
+              //     print("Flutter read barcode: " + barcode);
+              //   },
+              //   previewFlashMode: CameraFlashMode.auto,
+              //   cameraKitController: cameraKitController,
+              //   androidCameraMode: AndroidCameraMode.API_X,
+              //   cameraSelector: CameraSelector.back,
+              // )
+              ),
 //              Container(height: 250),
               Row(
                 children: <Widget>[
@@ -110,13 +113,16 @@ class _MyAppState extends State<MyApp> {
               Builder(
                 builder: (context) => RaisedButton(
                   child: Text("GO"),
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => Scaffold(
-                                  body: Text("Go is Here"),
-                                )));
+                  onPressed: () async {
+                    PickedFile? file = await ImagePicker.platform.pickImage(source: ImageSource.camera);
+                    String path = file!.path;
+                    final res = await CameraKitController().processImage(path);
+                    // Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //         builder: (context) => Scaffold(
+                    //               body: Text("Go is Here"),
+                    //             )));
                   },
                 ),
               )
